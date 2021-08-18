@@ -1,0 +1,1 @@
+/usr/bin/gcc-9 -g CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_main.c.o CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_service.c.o CMakeFiles/SOA_Project_TM.dir/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o CMakeFiles/SOA_Project_TM.dir/tag_service/tag_service.c.o -o SOA_Project_TM 
