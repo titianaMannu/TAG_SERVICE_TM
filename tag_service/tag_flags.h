@@ -49,8 +49,8 @@ typedef struct tag_t *tag_ptr_t;
 
 
 typedef struct tag_info_t {
-    struct tag_t  *ptr;                      // Pointer to the corresponding instance.
-    struct rw_semaphore tag_node_rwsem;   // For receivers as readers.
+    struct tag_t  *ptr;
+    struct rw_semaphore tag_node_rwsem;
 } tag_node;
 
 typedef tag_node *tag_node_ptr;

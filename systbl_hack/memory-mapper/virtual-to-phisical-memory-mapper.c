@@ -51,16 +51,7 @@ static inline unsigned long read_content_cr3(void) {
 #define PDE(vaddr)  ((unsigned long long)(vaddr >> 21) & 0x1ffULL)
 #define PTE(vaddr)  ((unsigned long long)(vaddr >> 12) & 0x1ffULL)
 
-/**
- *
- * todo change this
- * @brief Traverses the page table to check if a given virtual address
- * is mapped onto some physical frame.
- * Helps to prevent General Protection Errors.
- *
- * @param addr Virtual address to check.
- * @return Physical frame number, or NO_MAP.
- */
+
 long page_table_walk(unsigned long vaddr) {
 
     pgd_t * pml4; //page general directory
