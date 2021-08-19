@@ -19,8 +19,8 @@
 #define MODNAME "TAG-SERVICE"
 #define NO (0)
 #define YES (NO+1)
-#define REMOVE 1
-#define AWAKE_ALL 2
+#define REMOVE 10000
+#define AWAKE_ALL 20000
 
 struct msg_t{
     char * msg;

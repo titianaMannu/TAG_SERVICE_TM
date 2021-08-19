@@ -36,7 +36,7 @@ extern int max_tg;
 
 int create_tag(int in_key, int permissions);
 
-int remove_tag(int tag);
+int remove_tag(int tag, int nowait);
 
 int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
@@ -320,7 +320,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 }
 
 int tag_ctl(int tag, int command) {
-    int grace_epoch, next_epoch, level;
+    int grace_epoch, next_epoch, level, ret_key;
     if (tag < 0 || tag >= max_tg) {
         /* Invalid Arguments error */
         return -EINVAL;
@@ -387,10 +387,41 @@ int tag_ctl(int tag, int command) {
 
 
     }
+    /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
+    if ((command ^ IPC_NOWAIT) == REMOVE || command == REMOVE) {
+        /*case of REMOVE | IPC_NOWAIT  or just REMOVE */
+        if ((command ^ REMOVE) == IPC_NOWAIT) {
+            /* case of REMOVE | IPC_NOWAIT*/
 
-    if (command == REMOVE) {
-        return remove_tag(tag);
+            // every reader and every sender currently working with this tag takes a read lock
+            // we obtain the write lock when neither readers and writers are  here anymore
+            if (down_write_trylock(&tag_list[tag]->tag_node_rwsem)) {
+                // let's remove the tag
+                ret_key = remove_tag(tag, 1);
+                up_write(&tag_list[tag]->tag_node_rwsem);
+                return ret_key;
+
+            } else {
+                /*tag cannot be removed because it is busy*/
+                up_write(&tag_list[tag]->tag_node_rwsem);
+                return -EBUSY;
+            }
+        }
+
+
+        // every reader and every sender currently working with this tag takes a read lock
+        // we obtain the write lock when neither readers and writers are  here anymore
+        if (down_write_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+
+        ret_key = remove_tag(tag, 0);
+
+        up_write(&tag_list[tag]->tag_node_rwsem);
+
+        return ret_key;
+
     }
+
+
 
     // if we arrive here an invalid command was specified
     return -EINVAL;
@@ -469,16 +500,16 @@ int create_tag(int in_key, int permissions) {
 
 }
 
-int remove_tag(int tag) {
-    /*
-     * every reader and every sender currently working with this tag takes a read lock
-     * we obtain the write lock when neither readers and writers are  here anymore
-     */
-    if (down_write_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+/**
 
-
+ * take write lock on tag_list[tag]->tag_node_rwsem OUTSIDE of this function and use nowait=1 to provide a nonblocking
+ * behavior; if nowait is specified and the resource is not immediately available the operation abort and -EBUSY returned
+ */
+int remove_tag(int tag, int nowait) {
+    int ret_key;
     tag_ptr_t my_tag = tag_list[tag]->tag_ptr;
     if (my_tag != NULL) {
+        ret_key = my_tag->key;
 
         if (
             /* only creator user can access to this tag and the current user correspond to him */
@@ -487,38 +518,34 @@ int remove_tag(int tag) {
                 !my_tag->perm
                 ) {
 
-
-            if (my_tag->key != IPC_PRIVATE) {
-
-                if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
-
-                /* delete the tag from the key_list */
-                /* linear research  */
-                int i = 0;
-                for (; i < max_key; i++) {
-                    if (key_list[i] == tag) {
-                        key_list[i] = -1;
-                        break;
+            if (ret_key != IPC_PRIVATE) {
+                if (nowait) {
+                    if (down_write_trylock(&key_list_sem)) {
+                        key_list[ret_key] = -1;
+                        up_write(&key_list_sem);
+                    } else {
+                        return -EBUSY;
                     }
-                }
-                up_write(&key_list_sem);
-            }
 
+                } else {
+                    if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
+                    key_list[ret_key] = -1;
+                    up_write(&key_list_sem);
+
+                }
+            }
             /* delete the tag from the tag_list */
             tag_list[tag] = NULL;
             asm volatile ("mfence");
             kfree(my_tag);
 
-            up_write(&tag_list[tag]->tag_node_rwsem);
-            return 0;
+            return ret_key;
 
         } else {
             //permission denided case
-            up_write(&tag_list[tag]->tag_node_rwsem);
             return -EACCES;
         }
     } else {
-        up_write(&tag_list[tag]->tag_node_rwsem);
         /* this tag is not present */
         return -EIDRM;
     }
