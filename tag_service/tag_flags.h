@@ -3,12 +3,12 @@
 //
 
 #ifndef SOA_PROJECT_TM_TAG_FLAGS_H
-
-
-#define SOA_PROJECT_TM_TAG_FLAGS_H
+#include <stdbool.h>
 
 #include <linux/rwsem.h>
 #include <linux/uidgid.h>
+
+#define SOA_PROJECT_TM_TAG_FLAGS_H
 
 
 #define LEVELS 32
@@ -32,7 +32,7 @@ struct rcu_util{
     unsigned long standings[2];
     int  current_epoch;
     int  awake[2];
-    struct rw_semaphore _lock;
+    struct rw_semaphore sem;
 };
 typedef struct rcu_util *rcu_util_ptr;
 
@@ -40,8 +40,8 @@ typedef struct rcu_util *rcu_util_ptr;
 struct tag_t {
         int key;
         kuid_t uid;
-        msg_ptr_t msg_store[LEVELS];
         bool perm; // 1 if it is restricted to the creator user; 0 if it is public (all case)
+        msg_ptr_t msg_store[LEVELS];
         wait_queue_head_t sync_conditional[LEVELS][2];
         rcu_util_ptr msg_rcu_util_list[LEVELS];
         rcu_util_ptr awake_rcu_util_list;
