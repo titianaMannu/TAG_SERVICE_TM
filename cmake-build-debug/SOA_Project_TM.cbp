@@ -90,25 +90,34 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.h">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.h">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/systbl_hack.h">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack.h">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/systbl_hack_main.c">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_main.c">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/systbl_hack_service.c">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_service.c">
+			<Option target="SOA_Project_TM"/>
+		</Unit>
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag.c">
+			<Option target="SOA_Project_TM"/>
+		</Unit>
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag.h">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
 		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_flags.h">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
-		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_service.c">
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_main.c">
+			<Option target="SOA_Project_TM"/>
+		</Unit>
+		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/user/user-1.c">
 			<Option target="SOA_Project_TM"/>
 		</Unit>
 		<Unit filename="/home/tiziana/CLionProjects/SOA_Project_TM/CMakeLists.txt">

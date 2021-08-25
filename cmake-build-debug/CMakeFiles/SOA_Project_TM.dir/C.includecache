@@ -6,9 +6,27 @@
 
 #IncludeRegexTransform: 
 
-/home/tiziana/CLionProjects/SOA_Project_TM/main.c
-stdio.h
+/home/tiziana/CLionProjects/SOA_Project_TM/tag_lib.h
+unistd.h
+-
+errno.h
+-
+sys/syscall.h
+-
+sys/types.h
 -
 sys/ipc.h
 -
+
+/home/tiziana/CLionProjects/SOA_Project_TM/user/user-1.c
+sys/ipc.h
+-
+stdio.h
+-
+string.h
+-
+malloc.h
+-
+../tag_lib.h
+/home/tiziana/CLionProjects/SOA_Project_TM/tag_lib.h
 

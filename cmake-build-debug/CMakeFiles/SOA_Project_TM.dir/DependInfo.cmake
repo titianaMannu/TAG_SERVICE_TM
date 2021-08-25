@@ -8,10 +8,12 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
-  "/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/systbl_hack_main.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_main.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/systbl_hack/systbl_hack_service.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_service.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_service.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag_service.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_main.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_main.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_service.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_service.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_main.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag_main.c.o"
+  "/home/tiziana/CLionProjects/SOA_Project_TM/user/user-1.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/user-1.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")
 

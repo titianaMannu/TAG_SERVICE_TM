@@ -1,8 +1,10 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/SOA_Project_TM.dir/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
-  "CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_main.c.o"
-  "CMakeFiles/SOA_Project_TM.dir/systbl_hack/systbl_hack_service.c.o"
-  "CMakeFiles/SOA_Project_TM.dir/tag_service/tag_service.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_main.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_service.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/tag.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/tag_main.c.o"
+  "CMakeFiles/SOA_Project_TM.dir/user/user-1.c.o"
   "SOA_Project_TM"
   "SOA_Project_TM.pdb"
 )

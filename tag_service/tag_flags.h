@@ -38,7 +38,7 @@ struct tag_t {
     msg_ptr_t msg_store[LEVELS];
     wait_queue_head_t the_queue_head[LEVELS][2];
     rcu_util_ptr msg_rcu_util_list[LEVELS];
-    rcu_util_ptr awake_rcu_util_list;
+    rcu_util_ptr awake_rcu_util;
 
 };
 
