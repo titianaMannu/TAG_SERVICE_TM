@@ -1,6 +1,6 @@
 /**
  * @file tag_service.c
- * @brief todo insert a detailed description  description
+ * @brief todo insert a detailed description
  *
  * @author Tiziana mannucci
  *
@@ -23,11 +23,13 @@
 #include <linux/cred.h>
 #include <linux/errno.h>
 #include <linux/compiler.h>
-#include <stdbool.h>
-#include "tag_flags.h"
-#include <sys/ipc.h>
+#include <linux/ipc.h>
+#include <linux/filter.h>
 
-extern tag_node_ptr *tag_list;
+#include "tag_flags.h"
+#include "tag.h"
+
+extern tag_node_ptr tag_list;
 extern int *key_list;
 extern struct rw_semaphore key_list_sem;
 extern int max_key;
@@ -40,7 +42,7 @@ int remove_tag(int tag, int nowait);
 
 int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
-    if (key != IPC_PRIVATE && (key > max_key || key < 0)) {
+    if (key > max_key || key < 0) {
         //not valid key
         return -ENOKEY;
     }
@@ -48,9 +50,9 @@ int tag_get(int key, int command, int permissions) {
     if (key == IPC_PRIVATE) {
 
         tag_descriptor = create_tag(key, permissions);
-
+        printk( "tag descriptor %d\n", tag_descriptor);
         if (tag_descriptor < 0) {
-            printk(KERN_INFO "%s : Unable to create a new tag.", MODNAME);
+            printk(KERN_INFO "%s : Unable to create a new tag.\n", MODNAME);
             //tag creation failed
             return -ENOMEM;
         }
@@ -58,7 +60,8 @@ int tag_get(int key, int command, int permissions) {
         return tag_descriptor;
     }
         /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
-    else if ((command ^ IPC_EXCL) == IPC_CREAT || command == IPC_CREAT) {
+    if ((command ^ IPC_EXCL) == IPC_CREAT || command == IPC_CREAT) {
+        printk("CREAT CASE...");
         /*case of IPC_CREAT | IPC_EXCL  or just IPC_CREAT */
         if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
 
@@ -69,16 +72,17 @@ int tag_get(int key, int command, int permissions) {
 
             /*case of IPC_CREAT | IPC_EXCL */
             if ((command ^ IPC_CREAT) == IPC_EXCL) {
+                printk("eexcl case\n");
                 //return error because was specified IPC_EXCL
                 return -EEXIST;
             }
-
+            printk( "tag descriptor %d\n", tag_descriptor);
             return tag_descriptor;
 
         }
 
         tag_descriptor = create_tag(key, permissions);
-
+        printk( "tag descriptor %d\n", tag_descriptor);
         if (tag_descriptor < 0) {
             printk(KERN_INFO "%s : Unable to create a new tag.", MODNAME);
             //tag creation failed
@@ -94,11 +98,14 @@ int tag_get(int key, int command, int permissions) {
 
     }
 
+    /*not valid command was specified */
+
+    return -EINVAL;
 
 }
 
 int tag_send(int tag, int level, char *buffer, size_t size) {
-
+    tag_ptr_t my_tag;
     char *msg;
     int grace_epoch, next_epoch;
     unsigned long res;
@@ -108,9 +115,9 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
         return -EINVAL;
     }
     /* take read lock to avoid that someone deletes the tag entry during my job*/
-    if (down_read_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+    if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
 
-    tag_ptr_t my_tag = tag_list[tag]->tag_ptr;
+    my_tag = tag_list[tag].tag_ptr;
     if (my_tag != NULL) {
         /* permisson check */
         if (
@@ -122,7 +129,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
             if (down_write_killable(&(my_tag->msg_rcu_util_list[level]->sem)) == -EINTR) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
             }
 
@@ -131,7 +138,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
                 /* release write lock on the message buffer of the corresponding level */
                 up_write(&(my_tag->msg_rcu_util_list[level]->sem));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
 
                 /* zero lenght messages are anyhow allowed*/
                 return 0;
@@ -144,7 +151,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
                 /* release write lock on the message buffer of the corresponding level */
                 up_write(&(my_tag->msg_rcu_util_list[level]->sem));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
                 /* unable to allocate memory*/
                 return -ENOMEM;
             }
@@ -156,7 +163,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
                 /* release write lock on the message buffer of the corresponding level */
                 up_write(&(my_tag->msg_rcu_util_list[level]->sem));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
 
                 kfree(msg);
                 return -EFAULT;
@@ -178,7 +185,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             asm volatile ("mfence":: : "memory");
 
             /* wake up all thread waiting on the queue corresponding to the grace_epoch */
-            wake_up_all(&my_tag->sync_conditional[level][grace_epoch]);
+            wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
 
             while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
@@ -190,7 +197,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             /* release write lock on the message buffer of the corresponding level */
             up_write(&(my_tag->msg_rcu_util_list[level]->sem));
             /*release r_lock on the tag_list i-th entry previously obtained*/
-            up_read(&tag_list[tag]->tag_node_rwsem);
+            up_read(&tag_list[tag].tag_node_rwsem);
 
             kfree(msg);
 
@@ -199,13 +206,13 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
         } else {
             /*release r_lock on the tag_list i-th entry previously obtained*/
-            up_read(&tag_list[tag]->tag_node_rwsem);
+            up_read(&tag_list[tag].tag_node_rwsem);
             /* denied permission */
             return -EACCES;
         }
     } else {
         /*release r_lock on the tag_list i-th entry previously obtained*/
-        up_read(&tag_list[tag]->tag_node_rwsem);
+        up_read(&tag_list[tag].tag_node_rwsem);
         /* tag specified not exists */
         return -EFAULT;
     }
@@ -216,6 +223,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
 int tag_receive(int tag, int level, char *buffer, size_t size) {
     int my_epoch_msg, my_epoch_awake, event_wq_ret;
+    tag_ptr_t my_tag;
     unsigned long ret;
 
     if (tag < 0 || tag >= max_tg || level >= LEVELS || level < 0 || buffer == NULL || size < 0) {
@@ -224,9 +232,9 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
     }
 
     /* take read lock to avoid that someone deletes the tag entry during my job*/
-    if (down_read_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+    if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
 
-    tag_ptr_t my_tag = tag_list[tag]->tag_ptr;
+    my_tag = tag_list[tag].tag_ptr;
     if (my_tag != NULL) {
         /* permisson check */
         if (
@@ -243,7 +251,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
             __sync_fetch_and_add(&my_tag->awake_rcu_util_list->standings[my_epoch_awake], 1);
 
             /* wait event queues are used to selectively awake threads on some conditions*/
-            event_wq_ret = wait_event_interruptible(my_tag->sync_conditional[level][my_epoch_msg],
+            event_wq_ret = wait_event_interruptible(my_tag->the_queue_head[level][my_epoch_msg],
 
                                                     my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] ==
                                                     YES /* case of message arriving */
@@ -259,7 +267,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                 __sync_fetch_and_add(&my_tag->awake_rcu_util_list->standings[my_epoch_awake], -1);
 
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
 
             } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == YES) {
@@ -269,7 +277,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                 if (my_tag->msg_store[level]->size > size) {
                     // provided buffer is not large enough to copy the content of the message
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
-                    up_read(&tag_list[tag]->tag_node_rwsem);
+                    up_read(&tag_list[tag].tag_node_rwsem);
 
                     return -ENOBUFS;
                 }
@@ -278,7 +286,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                 asm volatile ("mfence":: : "memory");
                 if (ret != 0) {
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
-                    up_read(&tag_list[tag]->tag_node_rwsem);
+                    up_read(&tag_list[tag].tag_node_rwsem);
 
                     return -EFAULT;
                 }
@@ -287,7 +295,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
 
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
 
                 return (int) ret;
 
@@ -296,7 +304,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                 __sync_fetch_and_add(&my_tag->awake_rcu_util_list->standings[my_epoch_awake], -1);
 
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
                 /*this is not an error condition but 0 bytes has been copied because of awake all event*/
                 return 0;
 
@@ -305,22 +313,26 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
         } else {
             /*release r_lock on the tag_list i-th entry previously obtained*/
-            up_read(&tag_list[tag]->tag_node_rwsem);
+            up_read(&tag_list[tag].tag_node_rwsem);
             /* denied permission */
             return -EACCES;
         }
     } else {
         /*release r_lock on the tag_list i-th entry previously obtained*/
-        up_read(&tag_list[tag]->tag_node_rwsem);
+        up_read(&tag_list[tag].tag_node_rwsem);
         /* tag specified not exists */
         return -EFAULT;
     }
 
+    /*redundant ... */
+    up_read(&tag_list[tag].tag_node_rwsem);
+    return -EFAULT;
 
 }
 
 int tag_ctl(int tag, int command) {
     int grace_epoch, next_epoch, level, ret_key;
+    tag_ptr_t my_tag;
     if (tag < 0 || tag >= max_tg) {
         /* Invalid Arguments error */
         return -EINVAL;
@@ -329,9 +341,9 @@ int tag_ctl(int tag, int command) {
 
     if (command == AWAKE_ALL) {
         /* take read lock to avoid that someone deletes the tag entry during my job*/
-        if (down_read_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+        if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
 
-        tag_ptr_t my_tag = tag_list[tag]->tag_ptr;
+        my_tag = tag_list[tag].tag_ptr;
         if (my_tag != NULL) {
 
             if (
@@ -342,7 +354,7 @@ int tag_ctl(int tag, int command) {
 
                 if (down_write_killable(&(my_tag->awake_rcu_util_list->sem)) == -EINTR) {
                     /*release read lock on the tag_list i-th entry previously obtained*/
-                    up_read(&tag_list[tag]->tag_node_rwsem);
+                    up_read(&tag_list[tag].tag_node_rwsem);
                     return -EINTR;
                 }
 
@@ -353,14 +365,14 @@ int tag_ctl(int tag, int command) {
                 next_epoch += 1;
                 next_epoch = next_epoch % 2;
                 my_tag->awake_rcu_util_list->current_epoch = next_epoch;
-                /* all threads that are going to arrive belong to the new epoch and they wont be awoken*/
+                /* all threads that are going to arrive belong to the new epoch and they won't be awoken*/
                 my_tag->awake_rcu_util_list->awake[next_epoch] = NO;
                 asm volatile ("mfence":: : "memory");
 
                 for (level = 0; level < LEVELS; level++) {
                     /* wake up all thread waiting on the queue; independently of the level*/
-                    wake_up_all(&my_tag->sync_conditional[level][grace_epoch]);
-                    wake_up_all(&my_tag->sync_conditional[level][next_epoch]);
+                    wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
+                    wake_up_all(&my_tag->the_queue_head[level][next_epoch]);
                 }
 
 
@@ -368,19 +380,19 @@ int tag_ctl(int tag, int command) {
 
                 /* release lock previously aquired */
                 up_write(&my_tag->awake_rcu_util_list->sem);
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
 
                 return 0;
 
             } else {
                 /*permission denided case*/
                 /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag]->tag_node_rwsem);
+                up_read(&tag_list[tag].tag_node_rwsem);
                 return -EACCES;
             }
         } else {
             /*release r_lock on the tag_list i-th entry previously obtained*/
-            up_read(&tag_list[tag]->tag_node_rwsem);
+            up_read(&tag_list[tag].tag_node_rwsem);
             /* tag specified not exists */
             return -EFAULT;
         }
@@ -388,22 +400,21 @@ int tag_ctl(int tag, int command) {
 
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
-    if ((command ^ IPC_NOWAIT) == REMOVE || command == REMOVE) {
+    if ((command ^ IPC_NOWAIT) == IPC_RMID || command == IPC_RMID) {
         /*case of REMOVE | IPC_NOWAIT  or just REMOVE */
-        if ((command ^ REMOVE) == IPC_NOWAIT) {
+        if ((command ^ IPC_RMID) == IPC_NOWAIT) {
             /* case of REMOVE | IPC_NOWAIT*/
 
             // every reader and every sender currently working with this tag takes a read lock
             // we obtain the write lock when neither readers and writers are  here anymore
-            if (down_write_trylock(&tag_list[tag]->tag_node_rwsem)) {
+            if (down_write_trylock(&tag_list[tag].tag_node_rwsem)) {
                 // let's remove the tag
                 ret_key = remove_tag(tag, 1);
-                up_write(&tag_list[tag]->tag_node_rwsem);
+                up_write(&tag_list[tag].tag_node_rwsem);
                 return ret_key;
 
             } else {
-                /*tag cannot be removed because it is busy*/
-                up_write(&tag_list[tag]->tag_node_rwsem);
+                /*tag cannot be removed because it is busy and IPC_NOWAIT is specified */
                 return -EBUSY;
             }
         }
@@ -411,11 +422,11 @@ int tag_ctl(int tag, int command) {
 
         // every reader and every sender currently working with this tag takes a read lock
         // we obtain the write lock when neither readers and writers are  here anymore
-        if (down_write_killable(&tag_list[tag]->tag_node_rwsem) == -EINTR) return -EINTR;
+        if (down_write_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
 
         ret_key = remove_tag(tag, 0);
 
-        up_write(&tag_list[tag]->tag_node_rwsem);
+        up_write(&tag_list[tag].tag_node_rwsem);
 
         return ret_key;
 
@@ -430,27 +441,27 @@ int tag_ctl(int tag, int command) {
 
 
 void init_rcu_util(rcu_util_ptr rcu_util) {
-    rcu_util->standings[0] = 0; \
-    rcu_util->standings[1] = 0; \
-    rcu_util->awake[0] = 0x0; \
-    rcu_util->awake[1] = 0x1;\
+    rcu_util->standings[0] = 0;
+    rcu_util->standings[1] = 0;
+    rcu_util->awake[0] = 0x0;
+    rcu_util->awake[1] = 0x0;
     rcu_util->current_epoch = 0x0;
     init_rwsem(&rcu_util->sem);
 }
 
 int create_tag(int in_key, int permissions) {
-
-    int i = 0;
+    rcu_util_ptr new_awake_rcu, new_msg_rcu;
+    int i, j;
     tag_ptr_t new_tag;
-    for (; i < max_tg; i++) {
-        if (down_write_trylock(&tag_list[i]->tag_node_rwsem)) {
+    for (i = 0; i < max_tg; i++) {
+        if (down_write_trylock(&tag_list[i].tag_node_rwsem)) {
             //succesfull , lock acquired
 
-            if (tag_list[i]->tag_ptr == NULL) {
+            if (tag_list[i].tag_ptr == NULL) {
                 new_tag = kzalloc(sizeof(struct tag_t), GFP_KERNEL);
                 if (new_tag == NULL) {
                     //unable to allocate, release lock and return error
-                    up_write(&tag_list[i]->tag_node_rwsem);
+                    up_write(&tag_list[i].tag_node_rwsem);
                     return -ENOMEM;
                 }
 
@@ -460,31 +471,61 @@ int create_tag(int in_key, int permissions) {
                 if (permissions > 0) new_tag->perm = true;
                 else new_tag->perm = false;
 
-                int j;
-                for (j = 0; j < LEVELS; j++) {
-                    //message buffer initialization
-                    new_tag->msg_store[j]->msg = NULL;
-                    new_tag->msg_store[j]->size = 0;
-                    //rcu util initialization
-                    init_rcu_util(new_tag->msg_rcu_util_list[j]);
-                    //wait event queues initialization
-                    init_waitqueue_head(&new_tag->sync_conditional[j][0]);
-                    init_waitqueue_head(&new_tag->sync_conditional[j][1]);
-                }
-                //rcu util initialization
-                init_rcu_util(new_tag->awake_rcu_util_list);
 
-                tag_list[i]->tag_ptr = new_tag;
+                //rcu util initialization
+                new_awake_rcu = kzalloc(sizeof(struct rcu_util), GFP_KERNEL);
+                if (new_awake_rcu == NULL) {
+                    tag_list[i].tag_ptr = NULL;
+                    up_write(&tag_list[i].tag_node_rwsem);
+                    kfree(new_tag);
+                    return -ENOMEM;
+                }
+                init_rcu_util(new_awake_rcu);
+                new_tag->awake_rcu_util_list = new_awake_rcu;
+
+
+                for (j = 0; j < LEVELS; j++) {
+
+                    msg_ptr_t new_msg_str = kzalloc(sizeof(struct msg_t), GFP_KERNEL);
+                    if (new_msg_str == NULL) {
+                        tag_list[i].tag_ptr = NULL;
+                        up_write(&tag_list[i].tag_node_rwsem);
+                        tag_cleanup_mem(new_tag);
+                        return -ENOMEM;
+
+                    }
+                    //message buffer initialization
+                    new_msg_str->size = 0;
+                    new_msg_str->msg = NULL;
+                    new_tag->msg_store[j] = new_msg_str;
+
+                    new_msg_rcu = kzalloc(sizeof(struct rcu_util), GFP_KERNEL);
+                    if (new_msg_rcu == NULL) {
+                        tag_list[i].tag_ptr = NULL;
+                        up_write(&tag_list[i].tag_node_rwsem);
+                        tag_cleanup_mem(new_tag);
+                        return -ENOMEM;
+                    }
+                    //rcu util initialization
+                    init_rcu_util(new_msg_rcu);
+                    new_tag->msg_rcu_util_list[j] = new_msg_rcu;
+
+                    //wait event queues initialization
+                    init_waitqueue_head(&new_tag->the_queue_head[j][0]);
+                    init_waitqueue_head(&new_tag->the_queue_head[j][1]);
+                }
+
+                tag_list[i].tag_ptr = new_tag;
                 asm volatile ("sfence":: : "memory");
 
-                up_write(&tag_list[i]->tag_node_rwsem);
+                up_write(&tag_list[i].tag_node_rwsem);
                 // return a tag descriptor
                 return i;
 
 
             } else {
 
-                up_write(&tag_list[i]->tag_node_rwsem);
+                up_write(&tag_list[i].tag_node_rwsem);
                 continue;
 
             }
@@ -496,8 +537,25 @@ int create_tag(int in_key, int permissions) {
     //research failed ... there aren't free tags to use
     //if we can't get write lock on a tag it means that someone else is doing something with that tag
     //so it isn't free and you cannot insert a new one.
-    return -ENOMEM;
+    return -ENOKEY;
 
+}
+
+
+void tag_cleanup_mem(tag_ptr_t tag) {
+    int i;
+    if (tag == NULL) return;
+
+    if (tag->awake_rcu_util_list != NULL) {
+        kfree(tag->awake_rcu_util_list);
+    }
+
+    for (i = 0; i < LEVELS; i++) {
+        if (tag->msg_store[i] != NULL) kfree(tag->msg_store[i]);
+        if (tag->msg_rcu_util_list[i] != NULL) kfree(tag->msg_rcu_util_list[i]);
+    }
+
+    kfree(tag);
 }
 
 /**
@@ -507,7 +565,7 @@ int create_tag(int in_key, int permissions) {
  */
 int remove_tag(int tag, int nowait) {
     int ret_key;
-    tag_ptr_t my_tag = tag_list[tag]->tag_ptr;
+    tag_ptr_t my_tag = tag_list[tag].tag_ptr;
     if (my_tag != NULL) {
         ret_key = my_tag->key;
 
@@ -535,9 +593,10 @@ int remove_tag(int tag, int nowait) {
                 }
             }
             /* delete the tag from the tag_list */
-            tag_list[tag] = NULL;
+            tag_list[tag].tag_ptr = NULL;
             asm volatile ("mfence");
-            kfree(my_tag);
+            /*cleanup memory previously allocated*/
+            tag_cleanup_mem(my_tag);
 
             return ret_key;
 
@@ -550,3 +609,4 @@ int remove_tag(int tag, int nowait) {
         return -EIDRM;
     }
 }
+

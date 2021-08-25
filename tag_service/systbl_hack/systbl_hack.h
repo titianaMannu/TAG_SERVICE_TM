@@ -5,10 +5,9 @@
 #ifndef SOA_PROJECT_TM_SYSTBL_HACK_SERVICE_H
 
 #define SOA_PROJECT_TM_SYSTBL_HACK_SERVICE_H
-#define MODNAME "SYSCALL TABLE HACKING SYSTEM"
 #define AUDIT if(1)
 #define _PAGE_SIZE 4096
-#define _PAGE_MASK 0xfffffffffffff000ULL
+#define _ADDRESS_MASK 0xfffffffffffff000ULL
 
 //Virtual address research start point
 #define KERNEL_START ((void *)0xffffffff00000000ULL)

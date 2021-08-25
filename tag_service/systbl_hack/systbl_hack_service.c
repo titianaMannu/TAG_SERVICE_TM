@@ -19,7 +19,7 @@
 #include "systbl_hack.h"
 #include "memory-mapper/virtual-to-phisical-memory-mapper.h"
 
-
+#define MODNAME "SYSCALL TABLE HACKING SYSTEM"
 //For security reasons this parameters are accessible by root and it is readable by users in his group
 unsigned long sys_call_table = 0x0ULL;
 
@@ -99,7 +99,7 @@ int match_pattern(void *page) {
 
         // If the table occupies 2 pages ;  the second one could be materialized in a frame
         if (
-                ((unsigned long) (page + _PAGE_SIZE) == ((unsigned long) next_page & _PAGE_MASK))
+                ((unsigned long) (page + _PAGE_SIZE) == ((unsigned long) next_page & _ADDRESS_MASK))
                 && page_table_walk((unsigned long) next_page) == NO_MAP
                 )
             break;
@@ -180,9 +180,9 @@ int systbl_hack(void *new_syscall) {
             table_status_map[index] = 0; // set this entry as not available
 
             enable_write_protection();
-
-            AUDIT printk(KERN_DEBUG "%s : added a new syscall at %d\n", MODNAME, index);
             mutex_unlock(&systbl_mtx); // release lock on the table
+            AUDIT printk(KERN_DEBUG "%s : added a new syscall at %d and address of sysentry is %px\n", MODNAME, index,
+                         sys_call_table_address[index]);
 
 
             return index;
@@ -219,6 +219,8 @@ int systbl_entry_restore(int index_restorable, int use_lock) {
 
         enable_write_protection();
         AUDIT printk(KERN_DEBUG "%s : restored entry %d\n", MODNAME, index_restorable);
+        AUDIT printk(KERN_DEBUG "%s : address of %d entry of the table: %px\n", MODNAME, index_restorable,
+                     sys_call_table_address[index_restorable]);
     }
 
     if (use_lock) mutex_unlock(&systbl_mtx);
@@ -254,8 +256,8 @@ EXPORT_SYMBOL(systbl_total_restore);
 
 
 int was_ni(int pos) {
-    int i = 0;
-    for (; i < MAX_FREE_ENTRIES; i++) {
+    int i;
+    for (i = 0; i < MAX_FREE_ENTRIES; i++) {
         //linear research
         if (ni_free_positions[i] == pos) {
             //founded
