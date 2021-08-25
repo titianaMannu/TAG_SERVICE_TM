@@ -1,5 +1,5 @@
 /**
- * @file tag_service.c
+ * @file tag.c
  * @brief todo insert a detailed description
  *
  * @author Tiziana mannucci
@@ -395,7 +395,7 @@ int tag_ctl(int tag, int command) {
             /*release r_lock on the tag_list i-th entry previously obtained*/
             up_read(&tag_list[tag].tag_node_rwsem);
             /* tag specified not exists */
-            return -EFAULT;
+            return -ENOENT;
         }
 
 
@@ -607,7 +607,7 @@ int remove_tag(int tag, int nowait) {
         }
     } else {
         /* this tag is not present */
-        return -EIDRM;
+        return -ENOENT;
     }
 }
 

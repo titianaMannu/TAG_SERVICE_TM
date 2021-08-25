@@ -9,7 +9,7 @@
  * @date 13/08/2021
  *
  *
- * Inspired by VTPMO module provided in the the SOA course
+ * Inspired by VTPMO module provided during the the SOA course
  *
  */
 
