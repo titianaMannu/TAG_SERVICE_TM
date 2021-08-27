@@ -30,11 +30,10 @@
 #include "tag.h"
 
 extern tag_node_ptr tag_list;
-extern int *key_list;
-extern struct rw_semaphore key_list_sem;
-extern int max_key;
 extern int max_tg;
-
+extern int *key_list;
+extern int max_key;
+extern struct rw_semaphore key_list_sem;
 
 int create_tag(int in_key, int permissions);
 
@@ -44,7 +43,7 @@ int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
     if (key > max_key || key < 0) {
         //not valid key
-        return -ENOKEY;
+        return -EINVAL;
     }
 
     if (key == IPC_PRIVATE) {
@@ -120,12 +119,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
     my_tag = tag_list[tag].tag_ptr;
     if (my_tag != NULL) {
         /* permisson check */
-        if (
-            /* only creator user can access to this tag and the current user correspond to him */
-                (my_tag->perm && my_tag->uid.val == current_uid().val) ||
-                /* all user can access to this tag */
-                !my_tag->perm
-                ) {
+        if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
             if (down_write_killable(&(my_tag->msg_rcu_util_list[level]->sem)) == -EINTR) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
@@ -237,12 +231,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
     my_tag = tag_list[tag].tag_ptr;
     if (my_tag != NULL) {
         /* permisson check */
-        if (
-            /* only creator user can access to this tag and the current user correspond to him */
-                (my_tag->perm && my_tag->uid.val == current_uid().val) ||
-                /* all user can access to this tag */
-                !my_tag->perm
-                ) {
+        if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
             my_epoch_msg = my_tag->msg_rcu_util_list[level]->current_epoch;
             my_epoch_awake = my_tag->awake_rcu_util->current_epoch;
@@ -262,6 +251,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                                                     YES /* case of awake all */
             );
 
+            /*operation can fail also because of the delivery of a Posix signal*/
             if (event_wq_ret == -ERESTARTSYS) {
                 //we have been awoken by a signal
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
@@ -346,11 +336,7 @@ int tag_ctl(int tag, int command) {
         my_tag = tag_list[tag].tag_ptr;
         if (my_tag != NULL) {
 
-            if (
-                /* only creator user can access to this tag and the current user correspond to him */
-                    (my_tag->perm && my_tag->uid.val == current_uid().val) ||
-                    /* all user can access to this tag */
-                    !my_tag->perm) {
+            if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
                 /*write lock to protect against concurrent threads executing awake all */
                 if (down_write_killable(&(my_tag->awake_rcu_util->sem)) == -EINTR) {
@@ -442,12 +428,12 @@ int tag_ctl(int tag, int command) {
 
 
 void init_rcu_util(rcu_util_ptr rcu_util) {
+    init_rwsem(&rcu_util->sem);
     rcu_util->standings[0] = 0;
     rcu_util->standings[1] = 0;
-    rcu_util->awake[0] = 0x0;
-    rcu_util->awake[1] = 0x0;
-    rcu_util->current_epoch = 0x0;
-    init_rwsem(&rcu_util->sem);
+    rcu_util->awake[0] = NO;
+    rcu_util->awake[1] = NO;
+    rcu_util->current_epoch = 0;
 }
 
 int create_tag(int in_key, int permissions) {
@@ -570,12 +556,7 @@ int remove_tag(int tag, int nowait) {
     if (my_tag != NULL) {
         ret_key = my_tag->key;
 
-        if (
-            /* only creator user can access to this tag and the current user correspond to him */
-                (my_tag->perm && my_tag->uid.val == current_uid().val) ||
-                /* all user can access to this tag */
-                !my_tag->perm
-                ) {
+        if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
             if (ret_key != IPC_PRIVATE) {
                 if (nowait) {

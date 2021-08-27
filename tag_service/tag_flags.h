@@ -14,6 +14,14 @@
 
 #define NO (0)
 #define YES (NO+1)
+#define GOT_PERMISSION(permission, do_check)({ \
+        /* only creator user can access to this tag and the current user correspond to him */ \
+        (do_check && permission == current_uid().val)  ||                                      \
+        /* all user can access to this tag */                                              \
+        !do_check ||                 \
+        /* root user */                             \
+        current_uid().val == 0; \
+})
 
 
 struct msg_t {
@@ -37,22 +45,19 @@ struct tag_t {
     bool perm; // 1 if it is restricted to the creator user; 0 if it is public (all case)
     msg_ptr_t msg_store[LEVELS];
     wait_queue_head_t the_queue_head[LEVELS][2];
-    rcu_util_ptr msg_rcu_util_list[LEVELS];
     rcu_util_ptr awake_rcu_util;
+    rcu_util_ptr msg_rcu_util_list[LEVELS];
 
 };
-
-
 typedef struct tag_t *tag_ptr_t;
 
 
 typedef struct tag_info_t {
-    struct tag_t *tag_ptr;
+    tag_ptr_t tag_ptr;
     struct rw_semaphore tag_node_rwsem;
 } tag_node;
 
 typedef tag_node *tag_node_ptr;
-
 
 
 int tag_get(int key, int command, int permissions);

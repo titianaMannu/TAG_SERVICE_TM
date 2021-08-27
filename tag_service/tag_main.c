@@ -39,8 +39,8 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tiziana Mannucci <titianamannucci@gmail.com>");
 MODULE_DESCRIPTION("This Module implements a message exchange service based on tags");
-MODULE_INFO(module_name,
-MODNAME);
+MODULE_INFO(name,
+"tag_service");
 
 /*use this to hack the syscall table*/
 struct module *systbl_hack_mod_ptr;
@@ -107,6 +107,7 @@ __SYSCALL_DEFINEx(2, _tag_ctl, int, tag, int, command) {
 
 
 int tag_service_init(void) {
+    pr_info("name = %s\n", THIS_MODULE->name);
     int i;
     if (max_key > MAX_KEY) max_key = MAX_KEY;
     if (max_tg < MAX_TAG) max_tg = MAX_TAG;
@@ -173,7 +174,7 @@ int tag_service_init(void) {
     printk(KERN_INFO "%s : tag_receive at %d\n", MODNAME, tag_receive_nr);
     printk(KERN_INFO "%s : tag_ctl at %d\n", MODNAME, tag_ctl_nr);
 
-
+    printk(KERN_INFO "%s : module correctly mounted\n", MODNAME);
     return 0;
 
     error_exit_point:
