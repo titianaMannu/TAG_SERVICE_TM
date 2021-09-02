@@ -121,7 +121,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
         /* permisson check */
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
-            if (down_write_killable(&(my_tag->msg_rcu_util_list[level]->sem)) == -EINTR) {
+            if (mutex_lock_interruptible(&(my_tag->msg_rcu_util_list[level]->mtx)) == -EINTR) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
@@ -130,7 +130,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             if (size == 0) {
                 /* nothing to copy*/
                 /* release write lock on the message buffer of the corresponding level */
-                up_write(&(my_tag->msg_rcu_util_list[level]->sem));
+                mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
 
@@ -142,7 +142,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             msg = (char *) kzalloc(size, GFP_KERNEL);
             if (msg == NULL) {
                 /* release write lock on the message buffer of the corresponding level */
-                up_write(&(my_tag->msg_rcu_util_list[level]->sem));
+                mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
                 /* unable to allocate memory*/
@@ -155,7 +155,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             asm volatile ("mfence":: : "memory");
             if (res != 0) {
                 /* release write lock on the message buffer of the corresponding level */
-                up_write(&(my_tag->msg_rcu_util_list[level]->sem));
+                mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
 
@@ -189,7 +189,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             my_tag->msg_store[level]->size = 0;
 
             /* release write lock on the message buffer of the corresponding level */
-            up_write(&(my_tag->msg_rcu_util_list[level]->sem));
+            mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
             /*release r_lock on the tag_list i-th entry previously obtained*/
             up_read(&tag_list[tag].tag_node_rwsem);
 
@@ -321,7 +321,7 @@ int tag_ctl(int tag, int command) {
 
 
     if (command == AWAKE_ALL) {
-        awake_all(tag);
+       return  awake_all(tag);
 
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
@@ -366,7 +366,7 @@ int tag_ctl(int tag, int command) {
 
 
 void init_rcu_util(rcu_util_ptr rcu_util) {
-    init_rwsem(&rcu_util->sem);
+    mutex_init(&rcu_util->mtx);
     rcu_util->standings[0] = 0;
     rcu_util->standings[1] = 0;
     rcu_util->awake[0] = NO;
@@ -529,7 +529,7 @@ int awake_all(int tag) {
                  * to awake this level with a message or it means that another awaker is doing his job on the current epoch.
                  * Write lock to protect against concurrent threads executing awakers/writers.
                  */
-                if (down_write_trylock(&my_tag->msg_rcu_util_list[level]->sem)) {
+                if (mutex_trylock(&my_tag->msg_rcu_util_list[level]->mtx)) {
 
                     grace_epoch = next_epoch = my_tag->msg_rcu_util_list[level]->current_epoch;
                     my_tag->msg_rcu_util_list[level]->awake[grace_epoch] = AWAKE;
@@ -547,7 +547,7 @@ int awake_all(int tag) {
                     while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
                     /* release locks previously aquired */
-                    up_write(&my_tag->msg_rcu_util_list[level]->sem);
+                    mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
                     up_read(&tag_list[tag].tag_node_rwsem);
                 }
 

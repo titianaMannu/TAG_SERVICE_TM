@@ -36,7 +36,7 @@ struct rcu_util {
     unsigned long standings[2];
     int current_epoch;
     int awake[2];
-    struct rw_semaphore sem;
+    struct mutex mtx;
 };
 typedef struct rcu_util *rcu_util_ptr;
 
