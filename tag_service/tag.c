@@ -239,14 +239,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
             /* wait event queues are used to selectively awake threads on some conditions*/
             event_wq_ret = wait_event_interruptible(my_tag->the_queue_head[level][my_epoch_msg],
 
-                                                    my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] ==
-                                                    MESSAGE /* case of message arriving */
-
-                                                    ||
-
-                                                    my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] ==
-                                                    AWAKE   /* case of awake all */
-            );
+                                                    my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] != NO);
 
             /*operation can fail also because of the delivery of a Posix signal*/
             if (event_wq_ret == -ERESTARTSYS) {
