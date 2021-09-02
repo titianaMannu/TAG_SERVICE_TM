@@ -13,7 +13,9 @@
 
 
 #define NO (0)
-#define YES (NO+1)
+#define MESSAGE (NO+1)
+#define AWAKE (MESSAGE + 1)
+
 #define GOT_PERMISSION(permission, do_check)({ \
         /* only creator user can access to this tag and the current user correspond to him */ \
         (do_check && permission == current_uid().val)  ||                                      \
@@ -45,9 +47,7 @@ struct tag_t {
     bool perm; // 1 if it is restricted to the creator user; 0 if it is public (all case)
     msg_ptr_t msg_store[LEVELS];
     wait_queue_head_t the_queue_head[LEVELS][2];
-    rcu_util_ptr awake_rcu_util;
     rcu_util_ptr msg_rcu_util_list[LEVELS];
-
 };
 typedef struct tag_t *tag_ptr_t;
 
@@ -69,5 +69,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size);
 int tag_ctl(int tag, int command);
 
 void tag_cleanup_mem(tag_ptr_t tag);
+
+int awake_all(int tag);
 
 #endif //SOA_PROJECT_TM_TAG_FLAGS_H

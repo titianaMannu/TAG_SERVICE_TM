@@ -169,7 +169,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
 
             grace_epoch = next_epoch = my_tag->msg_rcu_util_list[level]->current_epoch;
-            my_tag->msg_rcu_util_list[level]->awake[grace_epoch] = YES;
+            my_tag->msg_rcu_util_list[level]->awake[grace_epoch] = MESSAGE;
 
             // now change epoch still under write lock
             next_epoch += 1;
@@ -216,7 +216,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
 
 int tag_receive(int tag, int level, char *buffer, size_t size) {
-    int my_epoch_msg, my_epoch_awake, event_wq_ret;
+    int my_epoch_msg, event_wq_ret;
     tag_ptr_t my_tag;
     unsigned long ret;
 
@@ -234,36 +234,30 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
             my_epoch_msg = my_tag->msg_rcu_util_list[level]->current_epoch;
-            my_epoch_awake = my_tag->awake_rcu_util->current_epoch;
-
             __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], 1);
-            __sync_fetch_and_add(&my_tag->awake_rcu_util->standings[my_epoch_awake], 1);
 
             /* wait event queues are used to selectively awake threads on some conditions*/
             event_wq_ret = wait_event_interruptible(my_tag->the_queue_head[level][my_epoch_msg],
 
                                                     my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] ==
-                                                    YES /* case of message arriving */
+                                                    MESSAGE /* case of message arriving */
 
                                                     ||
 
-                                                    my_tag->awake_rcu_util->awake[my_epoch_awake] ==
-                                                    YES /* case of awake all */
+                                                    my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] ==
+                                                    AWAKE   /* case of awake all */
             );
 
             /*operation can fail also because of the delivery of a Posix signal*/
             if (event_wq_ret == -ERESTARTSYS) {
                 //we have been awoken by a signal
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
-                __sync_fetch_and_add(&my_tag->awake_rcu_util->standings[my_epoch_awake], -1);
 
                 up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
 
-            } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == YES) {
+            } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == MESSAGE) {
                 /* let's read the incoming message */
-                __sync_fetch_and_add(&my_tag->awake_rcu_util->standings[my_epoch_awake], -1);
-
                 if (my_tag->msg_store[level]->size > size) {
                     // provided buffer is not large enough to copy the content of the message
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
@@ -289,14 +283,12 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
                 return (int) ret;
 
-            } else if (my_tag->awake_rcu_util->awake[my_epoch_awake] == YES) {
+            } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == AWAKE) {
                 /* we have been awoken by AWAKEALL routine */
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
-                __sync_fetch_and_add(&my_tag->awake_rcu_util->standings[my_epoch_awake], -1);
 
                 up_read(&tag_list[tag].tag_node_rwsem);
-                /*this is not an error condition but 0 bytes has been copied because of awake all event*/
-                return 0;
+                return -ECANCELED;
 
             }
 
@@ -321,8 +313,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 }
 
 int tag_ctl(int tag, int command) {
-    int grace_epoch, next_epoch, level, ret_key;
-    tag_ptr_t my_tag;
+    int ret_key;
     if (tag < 0 || tag >= max_tg) {
         /* Invalid Arguments error */
         return -EINVAL;
@@ -330,60 +321,7 @@ int tag_ctl(int tag, int command) {
 
 
     if (command == AWAKE_ALL) {
-        /* take read lock to avoid that someone deletes the tag entry during my job*/
-        if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
-
-        my_tag = tag_list[tag].tag_ptr;
-        if (my_tag != NULL) {
-
-            if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
-
-                /*write lock to protect against concurrent threads executing awake all */
-                if (down_write_killable(&(my_tag->awake_rcu_util->sem)) == -EINTR) {
-                    /*release read lock on the tag_list i-th entry previously obtained*/
-                    up_read(&tag_list[tag].tag_node_rwsem);
-                    return -EINTR;
-                }
-
-                grace_epoch = next_epoch = my_tag->awake_rcu_util->current_epoch;
-                my_tag->awake_rcu_util->awake[grace_epoch] = YES;
-
-                // now change epoch still under write lock
-                next_epoch += 1;
-                next_epoch = next_epoch % 2;
-                my_tag->awake_rcu_util->current_epoch = next_epoch;
-                /* all threads that are going to arrive belong to the new epoch and they won't be awoken*/
-                my_tag->awake_rcu_util->awake[next_epoch] = NO;
-                asm volatile ("mfence":: : "memory");
-
-                for (level = 0; level < LEVELS; level++) {
-                    /* wake up all thread waiting on the queue; independently of the level*/
-                    wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
-                    wake_up_all(&my_tag->the_queue_head[level][next_epoch]);
-                }
-
-
-                while (my_tag->awake_rcu_util->standings[grace_epoch] > 0) schedule();
-
-                /* release lock previously aquired */
-                up_write(&my_tag->awake_rcu_util->sem);
-                up_read(&tag_list[tag].tag_node_rwsem);
-
-                return 0;
-
-            } else {
-                /*permission denided case*/
-                /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag].tag_node_rwsem);
-                return -EACCES;
-            }
-        } else {
-            /*release r_lock on the tag_list i-th entry previously obtained*/
-            up_read(&tag_list[tag].tag_node_rwsem);
-            /* tag specified not exists */
-            return -ENOENT;
-        }
-
+        awake_all(tag);
 
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
@@ -437,7 +375,7 @@ void init_rcu_util(rcu_util_ptr rcu_util) {
 }
 
 int create_tag(int in_key, int permissions) {
-    rcu_util_ptr new_awake_rcu, new_msg_rcu;
+    rcu_util_ptr new_msg_rcu;
     int i, j;
     tag_ptr_t new_tag;
     for (i = 0; i < max_tg; i++) {
@@ -457,18 +395,6 @@ int create_tag(int in_key, int permissions) {
                 new_tag->uid.val = current_uid().val;
                 if (permissions > 0) new_tag->perm = true;
                 else new_tag->perm = false;
-
-
-                //rcu util initialization
-                new_awake_rcu = kzalloc(sizeof(struct rcu_util), GFP_KERNEL);
-                if (new_awake_rcu == NULL) {
-                    tag_list[i].tag_ptr = NULL;
-                    up_write(&tag_list[i].tag_node_rwsem);
-                    kfree(new_tag);
-                    return -ENOMEM;
-                }
-                init_rcu_util(new_awake_rcu);
-                new_tag->awake_rcu_util = new_awake_rcu;
 
 
                 for (j = 0; j < LEVELS; j++) {
@@ -532,11 +458,6 @@ int create_tag(int in_key, int permissions) {
 void tag_cleanup_mem(tag_ptr_t tag) {
     int i;
     if (tag == NULL) return;
-
-    if (tag->awake_rcu_util != NULL) {
-        kfree(tag->awake_rcu_util);
-    }
-
     for (i = 0; i < LEVELS; i++) {
         if (tag->msg_store[i] != NULL) kfree(tag->msg_store[i]);
         if (tag->msg_rcu_util_list[i] != NULL) kfree(tag->msg_rcu_util_list[i]);
@@ -546,7 +467,6 @@ void tag_cleanup_mem(tag_ptr_t tag) {
 }
 
 /**
-
  * take write lock on tag_list[tag]->tag_node_rwsem OUTSIDE of this function and use nowait=1 to provide a nonblocking
  * behavior; if nowait is specified and the resource is not immediately available the operation abort and -EBUSY returned
  */
@@ -592,3 +512,62 @@ int remove_tag(int tag, int nowait) {
     }
 }
 
+int awake_all(int tag) {
+    int grace_epoch, next_epoch, level;
+    tag_ptr_t my_tag;
+    /* take read lock to avoid that someone deletes the tag entry during my job*/
+    if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
+
+    my_tag = tag_list[tag].tag_ptr;
+    if (my_tag != NULL) {
+
+        if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
+
+            for (level = 0; level < LEVELS; level++) {
+                /*
+                 * Use trylock because if it is not immediately acquired it means that a sender is currently there
+                 * to awake this level with a message or it means that another awaker is doing his job on the current epoch.
+                 * Write lock to protect against concurrent threads executing awakers/writers.
+                 */
+                if (down_write_trylock(&my_tag->msg_rcu_util_list[level]->sem)) {
+
+                    grace_epoch = next_epoch = my_tag->msg_rcu_util_list[level]->current_epoch;
+                    my_tag->msg_rcu_util_list[level]->awake[grace_epoch] = AWAKE;
+
+                    // now change epoch still under write lock
+                    next_epoch += 1;
+                    next_epoch = next_epoch % 2;
+                    my_tag->msg_rcu_util_list[level]->current_epoch = next_epoch;
+                    /* all the following threads belong to the new epoch and won't be awoken*/
+                    my_tag->msg_rcu_util_list[level]->awake[next_epoch] = NO;
+                    asm volatile ("mfence":: : "memory");
+
+                    wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
+
+                    while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
+
+                    /* release locks previously aquired */
+                    up_write(&my_tag->msg_rcu_util_list[level]->sem);
+                    up_read(&tag_list[tag].tag_node_rwsem);
+                }
+
+
+            }
+
+            return 0;
+
+        } else {
+            /*permission denided case*/
+            /*release r_lock on the tag_list i-th entry previously obtained*/
+            up_read(&tag_list[tag].tag_node_rwsem);
+            return -EACCES;
+        }
+    } else {
+        /*release r_lock on the tag_list i-th entry previously obtained*/
+        up_read(&tag_list[tag].tag_node_rwsem);
+        /* tag specified not exists */
+        return -ENOENT;
+    }
+
+
+}
