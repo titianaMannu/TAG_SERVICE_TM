@@ -72,4 +72,8 @@ void tag_cleanup_mem(tag_ptr_t tag);
 
 int awake_all(int tag);
 
+int create_tag(int in_key, int permissions);
+
+int remove_tag(int tag, int nowait);
+
 #endif //SOA_PROJECT_TM_TAG_FLAGS_H

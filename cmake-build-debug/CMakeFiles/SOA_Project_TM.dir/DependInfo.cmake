@@ -8,12 +8,16 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_main.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_main.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/systbl_hack/systbl_hack_service.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_service.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/tag_service/tag_main.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag_main.c.o"
-  "/home/tiziana/CLionProjects/SOA_Project_TM/user/user-1.c" "/home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/user-1.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/systbl_hack/systbl_hack_main.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_main.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/systbl_hack/systbl_hack_service.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_service.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/tag.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/tag_main.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/tag_service/tag_main.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/awake.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/awake.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/remove.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/remove.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/tag-interface.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/tag-interface.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/user1.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/user1.c.o"
+  "/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/user2.c" "/home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles/SOA_Project_TM.dir/user/user2.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")
 
@@ -25,8 +29,8 @@ set(CMAKE_TARGET_DEFINITIONS_C
 
 # The include file search paths:
 set(CMAKE_C_TARGET_INCLUDE_PATH
-  "/usr/src/linux-headers-5.11.0-25-generic/include"
-  "/usr/src/linux-headers-5.11.0-25-generic/arch/x86/include"
+  "/usr/src/linux-headers-5.11.0-27-generic/include"
+  "/usr/src/linux-headers-5.11.0-27-generic/arch/x86/include"
   )
 
 # The set of dependency files which are needed:

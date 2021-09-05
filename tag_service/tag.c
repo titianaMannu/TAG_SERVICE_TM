@@ -11,6 +11,11 @@
  *
  */
 
+#include <linux/cred.h>
+#include <linux/errno.h>
+#include <linux/compiler.h>
+#include <linux/ipc.h>
+#include <linux/filter.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -20,11 +25,7 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/mutex.h>
-#include <linux/cred.h>
-#include <linux/errno.h>
-#include <linux/compiler.h>
-#include <linux/ipc.h>
-#include <linux/filter.h>
+
 
 #include "tag_flags.h"
 #include "tag.h"
@@ -34,10 +35,8 @@ extern int max_tg;
 extern int *key_list;
 extern int max_key;
 extern struct rw_semaphore key_list_sem;
+extern unsigned msg_size;
 
-int create_tag(int in_key, int permissions);
-
-int remove_tag(int tag, int nowait);
 
 int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
@@ -60,30 +59,28 @@ int tag_get(int key, int command, int permissions) {
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
     if ((command ^ IPC_EXCL) == IPC_CREAT || command == IPC_CREAT) {
-        printk("CREAT CASE...");
         /*case of IPC_CREAT | IPC_EXCL  or just IPC_CREAT */
         if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
 
         if (key_list[key] != -1) {
-            //corresponding tag exists;
+            //corresponding tag already exists
             tag_descriptor = key_list[key];
             up_write(&key_list_sem);
 
             /*case of IPC_CREAT | IPC_EXCL */
             if ((command ^ IPC_CREAT) == IPC_EXCL) {
-                printk("eexcl case\n");
                 //return error because was specified IPC_EXCL
                 return -EEXIST;
             }
-            printk("tag descriptor %d\n", tag_descriptor);
+
             return tag_descriptor;
 
         }
 
         tag_descriptor = create_tag(key, permissions);
-        printk("tag descriptor %d\n", tag_descriptor);
         if (tag_descriptor < 0) {
             printk(KERN_INFO "%s : Unable to create a new tag.", MODNAME);
+            up_write(&key_list_sem);
             //tag creation failed
             return -ENOMEM;
         }
@@ -109,7 +106,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
     int grace_epoch, next_epoch;
     unsigned long res;
 
-    if (tag < 0 || tag >= max_tg || level >= LEVELS || level < 0 || buffer == NULL || size < 0) {
+    if (tag < 0 || tag >= max_tg || level >= LEVELS || level < 0 || buffer == NULL || size < 0 || size > msg_size) {
         /* Invalid Arguments error */
         return -EINVAL;
     }
@@ -120,7 +117,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
     if (my_tag != NULL) {
         /* permisson check */
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
-
+            /* other writers on the same tag-level exclusion */
             if (mutex_lock_interruptible(&(my_tag->msg_rcu_util_list[level]->mtx)) == -EINTR) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
@@ -150,7 +147,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             }
 
 
-            //start to copy the message
+            /* start to copy the message */
             res = copy_from_user(msg, buffer, size);
             asm volatile ("mfence":: : "memory");
             if (res != 0) {
@@ -165,8 +162,6 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
             my_tag->msg_store[level]->msg = msg;
             my_tag->msg_store[level]->size = size;
-            asm volatile ("sfence":: : "memory");
-
 
             grace_epoch = next_epoch = my_tag->msg_rcu_util_list[level]->current_epoch;
             my_tag->msg_rcu_util_list[level]->awake[grace_epoch] = MESSAGE;
@@ -181,6 +176,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             /* wake up all thread waiting on the queue corresponding to the grace_epoch */
             wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
 
+            /*wait until all readers have been consumed the message avoiding busy-waiting */
             while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
             /* here all readerers on the grace_epoch consumed the message */
@@ -202,7 +198,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             /*release r_lock on the tag_list i-th entry previously obtained*/
             up_read(&tag_list[tag].tag_node_rwsem);
             /* denied permission */
-            return -EACCES;
+            return -EPERM;
         }
     } else {
         /*release r_lock on the tag_list i-th entry previously obtained*/
@@ -233,6 +229,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
         /* permisson check */
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
+
             my_epoch_msg = my_tag->msg_rcu_util_list[level]->current_epoch;
             __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], 1);
 
@@ -243,9 +240,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
             /*operation can fail also because of the delivery of a Posix signal*/
             if (event_wq_ret == -ERESTARTSYS) {
-                //we have been awoken by a signal
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
-
                 up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
 
@@ -264,7 +259,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                 if (ret != 0) {
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                     up_read(&tag_list[tag].tag_node_rwsem);
-
+                    /* error during the copy-- partial delivery of the message not supported */
                     return -EFAULT;
                 }
 
@@ -290,7 +285,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
             /*release r_lock on the tag_list i-th entry previously obtained*/
             up_read(&tag_list[tag].tag_node_rwsem);
             /* denied permission */
-            return -EACCES;
+            return -EPERM;
         }
     } else {
         /*release r_lock on the tag_list i-th entry previously obtained*/
@@ -299,7 +294,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
         return -ENOENT;
     }
 
-    /*redundant ... */
+    /*redundant ... just to be secure ! */
     up_read(&tag_list[tag].tag_node_rwsem);
     return -EFAULT;
 
@@ -314,40 +309,30 @@ int tag_ctl(int tag, int command) {
 
 
     if (command == AWAKE_ALL) {
-       return  awake_all(tag);
-
+        return awake_all(tag);
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
     if ((command ^ IPC_NOWAIT) == IPC_RMID || command == IPC_RMID) {
         /*case of REMOVE | IPC_NOWAIT  or just REMOVE */
-        if ((command ^ IPC_RMID) == IPC_NOWAIT) {
-            /* case of REMOVE | IPC_NOWAIT*/
-
-            // every reader and every sender currently working with this tag takes a read lock
-            // we obtain the write lock when neither readers and writers are  here anymore
-            if (down_write_trylock(&tag_list[tag].tag_node_rwsem)) {
-                // let's remove the tag
-                ret_key = remove_tag(tag, 1);
-                up_write(&tag_list[tag].tag_node_rwsem);
-                return ret_key;
-
-            } else {
-                /*tag cannot be removed because it is busy and IPC_NOWAIT is specified */
-                return -EBUSY;
-            }
-        }
-
 
         // every reader and every sender currently working with this tag takes a read lock
-        // we obtain the write lock when neither readers and writers are  here anymore
-        if (down_write_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
+        // we obtain the write lock when neither readers and writers are here anymore
+        if (down_write_trylock(&tag_list[tag].tag_node_rwsem)) {
+            if ((command ^ IPC_RMID) == IPC_NOWAIT) {
+                /* case of REMOVE | IPC_NOWAIT
+                 * let's remove the tag */
+                ret_key = remove_tag(tag, 1);
+            } else {
+                ret_key = remove_tag(tag, 0);
+            }
 
-        ret_key = remove_tag(tag, 0);
+            up_write(&tag_list[tag].tag_node_rwsem);
+            return ret_key;
 
-        up_write(&tag_list[tag].tag_node_rwsem);
-
-        return ret_key;
-
+        } else {
+            /*tag cannot be removed because other readers are still waiting for a message */
+            return -EBUSY;
+        }
     }
 
 
@@ -443,7 +428,7 @@ int create_tag(int in_key, int permissions) {
     //research failed ... there aren't free tags to use
     //if we can't get write lock on a tag it means that someone else is doing something with that tag
     //so it isn't free and you cannot insert a new one.
-    return -ENOKEY;
+    return -EAGAIN;
 
 }
 
@@ -484,7 +469,6 @@ int remove_tag(int tag, int nowait) {
                     if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
                     key_list[ret_key] = -1;
                     up_write(&key_list_sem);
-
                 }
             }
             /* delete the tag from the tag_list */
@@ -496,8 +480,8 @@ int remove_tag(int tag, int nowait) {
             return ret_key;
 
         } else {
-            //permission denided case
-            return -EACCES;
+            /*permission denided case*/
+            return -EPERM;
         }
     } else {
         /* this tag is not present */
@@ -520,7 +504,7 @@ int awake_all(int tag) {
                 /*
                  * Use trylock because if it is not immediately acquired it means that a sender is currently there
                  * to awake this level with a message or it means that another awaker is doing his job on the current epoch.
-                 * Write lock to protect against concurrent threads executing awakers/writers.
+                 * this lock is acquired to protect against concurrent threads executing awakers/writers.
                  */
                 if (mutex_trylock(&my_tag->msg_rcu_util_list[level]->mtx)) {
 
@@ -534,26 +518,26 @@ int awake_all(int tag) {
                     /* all the following threads belong to the new epoch and won't be awoken*/
                     my_tag->msg_rcu_util_list[level]->awake[next_epoch] = NO;
                     asm volatile ("mfence":: : "memory");
-
+                    /* wake up all thread waiting on the queue corresponding to the grace_epoch */
                     wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
 
                     while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
                     /* release locks previously aquired */
                     mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
-                    up_read(&tag_list[tag].tag_node_rwsem);
+
                 }
 
 
             }
-
+            up_read(&tag_list[tag].tag_node_rwsem);
             return 0;
 
         } else {
             /*permission denided case*/
             /*release r_lock on the tag_list i-th entry previously obtained*/
             up_read(&tag_list[tag].tag_node_rwsem);
-            return -EACCES;
+            return -EPERM;
         }
     } else {
         /*release r_lock on the tag_list i-th entry previously obtained*/

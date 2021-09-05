@@ -57,10 +57,10 @@ RM = /snap/clion/163/bin/cmake/linux/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/tiziana/CLionProjects/SOA_Project_TM
+CMAKE_SOURCE_DIR = /home/tiziana/CLionProjects/TAG_SERVICE_TM
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug
+CMAKE_BINARY_DIR = /home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles /home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles /home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -249,29 +249,125 @@ tag_service/tag_main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/tag_service/tag_main.c.s
 .PHONY : tag_service/tag_main.c.s
 
-user/user-1.o: user/user-1.c.o
-.PHONY : user/user-1.o
+user/awake.o: user/awake.c.o
+.PHONY : user/awake.o
 
 # target to build an object file
-user/user-1.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user-1.c.o
-.PHONY : user/user-1.c.o
+user/awake.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/awake.c.o
+.PHONY : user/awake.c.o
 
-user/user-1.i: user/user-1.c.i
-.PHONY : user/user-1.i
+user/awake.i: user/awake.c.i
+.PHONY : user/awake.i
 
 # target to preprocess a source file
-user/user-1.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user-1.c.i
-.PHONY : user/user-1.c.i
+user/awake.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/awake.c.i
+.PHONY : user/awake.c.i
 
-user/user-1.s: user/user-1.c.s
-.PHONY : user/user-1.s
+user/awake.s: user/awake.c.s
+.PHONY : user/awake.s
 
 # target to generate assembly for a file
-user/user-1.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user-1.c.s
-.PHONY : user/user-1.c.s
+user/awake.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/awake.c.s
+.PHONY : user/awake.c.s
+
+user/remove.o: user/remove.c.o
+.PHONY : user/remove.o
+
+# target to build an object file
+user/remove.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/remove.c.o
+.PHONY : user/remove.c.o
+
+user/remove.i: user/remove.c.i
+.PHONY : user/remove.i
+
+# target to preprocess a source file
+user/remove.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/remove.c.i
+.PHONY : user/remove.c.i
+
+user/remove.s: user/remove.c.s
+.PHONY : user/remove.s
+
+# target to generate assembly for a file
+user/remove.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/remove.c.s
+.PHONY : user/remove.c.s
+
+user/tag-interface.o: user/tag-interface.c.o
+.PHONY : user/tag-interface.o
+
+# target to build an object file
+user/tag-interface.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/tag-interface.c.o
+.PHONY : user/tag-interface.c.o
+
+user/tag-interface.i: user/tag-interface.c.i
+.PHONY : user/tag-interface.i
+
+# target to preprocess a source file
+user/tag-interface.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/tag-interface.c.i
+.PHONY : user/tag-interface.c.i
+
+user/tag-interface.s: user/tag-interface.c.s
+.PHONY : user/tag-interface.s
+
+# target to generate assembly for a file
+user/tag-interface.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/tag-interface.c.s
+.PHONY : user/tag-interface.c.s
+
+user/user1.o: user/user1.c.o
+.PHONY : user/user1.o
+
+# target to build an object file
+user/user1.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user1.c.o
+.PHONY : user/user1.c.o
+
+user/user1.i: user/user1.c.i
+.PHONY : user/user1.i
+
+# target to preprocess a source file
+user/user1.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user1.c.i
+.PHONY : user/user1.c.i
+
+user/user1.s: user/user1.c.s
+.PHONY : user/user1.s
+
+# target to generate assembly for a file
+user/user1.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user1.c.s
+.PHONY : user/user1.c.s
+
+user/user2.o: user/user2.c.o
+.PHONY : user/user2.o
+
+# target to build an object file
+user/user2.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user2.c.o
+.PHONY : user/user2.c.o
+
+user/user2.i: user/user2.c.i
+.PHONY : user/user2.i
+
+# target to preprocess a source file
+user/user2.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user2.c.i
+.PHONY : user/user2.c.i
+
+user/user2.s: user/user2.c.s
+.PHONY : user/user2.s
+
+# target to generate assembly for a file
+user/user2.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/user/user2.c.s
+.PHONY : user/user2.c.s
 
 # Help Target
 help:
@@ -297,9 +393,21 @@ help:
 	@echo "... tag_service/tag_main.o"
 	@echo "... tag_service/tag_main.i"
 	@echo "... tag_service/tag_main.s"
-	@echo "... user/user-1.o"
-	@echo "... user/user-1.i"
-	@echo "... user/user-1.s"
+	@echo "... user/awake.o"
+	@echo "... user/awake.i"
+	@echo "... user/awake.s"
+	@echo "... user/remove.o"
+	@echo "... user/remove.i"
+	@echo "... user/remove.s"
+	@echo "... user/tag-interface.o"
+	@echo "... user/tag-interface.i"
+	@echo "... user/tag-interface.s"
+	@echo "... user/user1.o"
+	@echo "... user/user1.i"
+	@echo "... user/user1.s"
+	@echo "... user/user2.o"
+	@echo "... user/user2.i"
+	@echo "... user/user2.s"
 .PHONY : help
 
 

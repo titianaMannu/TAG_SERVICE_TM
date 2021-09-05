@@ -1,6 +1,6 @@
-/snap/clion/163/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/usr/bin/make -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - Unix Makefiles" /home/tiziana/CLionProjects/SOA_Project_TM
+/snap/clion/163/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/usr/bin/make -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - Unix Makefiles" /home/tiziana/CLionProjects/TAG_SERVICE_TM
 -- Kernel release: 5.11.0-27-generic
--- Kernel headers: /usr/src/linux-headers-5.11.0-25-generic
+-- Kernel headers: /usr/src/linux-headers-5.11.0-27-generic
 -- Configuring done
 -- Generating done
--- Build files have been written to: /home/tiziana/CLionProjects/SOA_Project_TM/cmake-build-debug
+-- Build files have been written to: /home/tiziana/CLionProjects/TAG_SERVICE_TM/cmake-build-debug

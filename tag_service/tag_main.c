@@ -107,8 +107,8 @@ __SYSCALL_DEFINEx(2, _tag_ctl, int, tag, int, command) {
 
 
 int tag_service_init(void) {
-    pr_info("name = %s\n", THIS_MODULE->name);
     int i;
+    printk(KERN_INFO "%s name = %s\n", MODNAME, THIS_MODULE->name);
     if (max_key > MAX_KEY) max_key = MAX_KEY;
     if (max_tg < MAX_TAG) max_tg = MAX_TAG;
     if (msg_size < MSG_LEN) msg_size = MSG_LEN;
@@ -124,7 +124,7 @@ int tag_service_init(void) {
     }
     if (!try_module_get(systbl_hack_mod_ptr)) {
         mutex_unlock(&module_mutex);
-        printk(KERN_DEBUG "%s : cannot find systbl_hack module\n", MODNAME);
+        printk(KERN_INFO "%s : cannot find systbl_hack module\n", MODNAME);
         return -ENOENT;
     }
     mutex_unlock(&module_mutex);
@@ -137,12 +137,12 @@ int tag_service_init(void) {
         module_put(systbl_hack_mod_ptr);
         return -ENOMEM;
     }
-
+    /*setup key_list like an empty list*/
     for (i = 0; i < max_key; i++) {
         key_list[i] = -1;
     }
 
-    tag_list = (tag_node_ptr)kzalloc(sizeof(tag_node) * max_tg, GFP_KERNEL);
+    tag_list = (tag_node_ptr) kzalloc(sizeof(tag_node) * max_tg, GFP_KERNEL);
     if (tag_list == NULL) {
         printk(KERN_INFO "%s : Unable to allocate memory to create tags list.\n", MODNAME);
         kfree(key_list);
@@ -195,19 +195,19 @@ void tag_service_clean(void) {
     if (systbl_entry_restore(tag_get_nr, 1) == 0) {
         printk(KERN_INFO "%s : deleted tag_get at %d\n", MODNAME, tag_get_nr);
     }
-    if (systbl_entry_restore(tag_receive_nr, 1)==0){
+    if (systbl_entry_restore(tag_receive_nr, 1) == 0) {
         printk(KERN_INFO "%s : deleted tag_send at %d\n", MODNAME, tag_send_nr);
     }
-    if (systbl_entry_restore(tag_send_nr, 1)== 0){
+    if (systbl_entry_restore(tag_send_nr, 1) == 0) {
         printk(KERN_INFO "%s : deleted tag_receive at %d\n", MODNAME, tag_receive_nr);
     }
-    if ( systbl_entry_restore(tag_ctl_nr, 1) == 0){
+    if (systbl_entry_restore(tag_ctl_nr, 1) == 0) {
         printk(KERN_INFO "%s : deleted tag_ctl at %d\n", MODNAME, tag_ctl_nr);
     }
 
 
     kfree(key_list);
-    for (i = 0; i < max_tg; i++){
+    for (i = 0; i < max_tg; i++) {
         tag_cleanup_mem(tag_list[i].tag_ptr);
     }
     kfree(tag_list);

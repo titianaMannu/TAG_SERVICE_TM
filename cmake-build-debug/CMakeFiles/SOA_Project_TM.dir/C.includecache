@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/tiziana/CLionProjects/SOA_Project_TM/tag_lib.h
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_lib.h
 unistd.h
 -
 errno.h
@@ -18,15 +18,25 @@ sys/types.h
 sys/ipc.h
 -
 
-/home/tiziana/CLionProjects/SOA_Project_TM/user/user-1.c
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/tag.h
+
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/awake.c
 sys/ipc.h
 -
 stdio.h
 -
 string.h
 -
-malloc.h
+stdlib.h
+-
+pthread.h
 -
 ../tag_lib.h
-/home/tiziana/CLionProjects/SOA_Project_TM/tag_lib.h
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_lib.h
+tag-interface.h
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/tag-interface.h
+
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/user/tag-interface.h
+../tag_service/tag.h
+/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/tag.h
 

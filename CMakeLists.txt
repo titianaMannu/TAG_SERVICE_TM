@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(SOA_Project_TM C)
 
 set(CMAKE_C_STANDARD 11)
-
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
 # Find kernel headers
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -19,8 +19,12 @@ add_executable(SOA_Project_TM
         tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c
         tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.h
         tag_service/tag_flags.h tag_service/tag.c
-        user/user-1.c
         tag_service/tag_main.c
+        user/tag-interface.c user/tag-interface.h
+        user/user1.c
+        user/user2.c
+        user/awake.c
+        user/remove.c
         )
 
 
