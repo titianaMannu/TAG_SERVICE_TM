@@ -113,7 +113,7 @@ int tag_service_init(void) {
     if (max_tg < MAX_TAG) max_tg = MAX_TAG;
     if (msg_size < MSG_LEN) msg_size = MSG_LEN;
 
-    printk(KERN_INFO"%s: initializing\n", MODNAME);
+    printk(KERN_INFO"%s: Initializing...\n", MODNAME);
 
     if (mutex_lock_interruptible(&module_mutex) == -EINTR) return -EINTR;
 

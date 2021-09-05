@@ -38,7 +38,7 @@ DEFINE_MUTEX(systbl_mtx);
 
 int systbl_hack_init(void) {
     int ni_entries;
-
+    printk(KERN_INFO "%s name = %s\n", MODNAME, THIS_MODULE->name);
     printk("%s: Initializing...\n", MODNAME);
 
     ni_entries = systbl_search();

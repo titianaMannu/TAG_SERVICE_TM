@@ -176,8 +176,8 @@ int systbl_hack(void *new_syscall) {
             disable_write_protection();
 
             sys_call_table_address[index] = new_syscall; //new system call insertion
-            asm volatile ("sfence":: : "memory");
             table_status_map[index] = 0; // set this entry as not available
+            asm volatile ("sfence":: : "memory");
 
             enable_write_protection();
             mutex_unlock(&systbl_mtx); // release lock on the table
@@ -213,7 +213,6 @@ int systbl_entry_restore(int index_restorable, int use_lock) {
         disable_write_protection();
 
         sys_call_table_address[index_restorable] = sys_ni_syscall_address;
-
         table_status_map[index_restorable] = 1; //replace status of the entry to 1 (= FREE)
         asm volatile ("sfence":: : "memory");
 
