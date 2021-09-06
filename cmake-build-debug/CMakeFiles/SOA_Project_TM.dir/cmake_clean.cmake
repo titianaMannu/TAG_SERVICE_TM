@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/SOA_Project_TM.dir/tag_service/device-driver/tag_dev.c.o"
   "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o"
   "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_main.c.o"
   "CMakeFiles/SOA_Project_TM.dir/tag_service/systbl_hack/systbl_hack_service.c.o"

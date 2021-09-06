@@ -29,8 +29,6 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tiziana Mannucci <titianamannucci@gmail.com>");
 MODULE_DESCRIPTION("This Module implements a syscall table hacking system");
-MODULE_INFO(name,
-"systbl_hack");
 
 /*must perform operation on the table atomically.*/
 DEFINE_MUTEX(systbl_mtx);
@@ -43,7 +41,7 @@ int systbl_hack_init(void) {
 
     ni_entries = systbl_search();
     if (ni_entries == -1) {
-        printk(KERN_INFO "%s : Failed initalization", MODNAME);
+        printk(KERN_INFO "%s : Failed initalization\n", MODNAME);
         return -1;
     }
 

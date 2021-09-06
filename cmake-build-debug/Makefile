@@ -129,6 +129,30 @@ SOA_Project_TM/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/build
 .PHONY : SOA_Project_TM/fast
 
+tag_service/device-driver/tag_dev.o: tag_service/device-driver/tag_dev.c.o
+.PHONY : tag_service/device-driver/tag_dev.o
+
+# target to build an object file
+tag_service/device-driver/tag_dev.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/tag_service/device-driver/tag_dev.c.o
+.PHONY : tag_service/device-driver/tag_dev.c.o
+
+tag_service/device-driver/tag_dev.i: tag_service/device-driver/tag_dev.c.i
+.PHONY : tag_service/device-driver/tag_dev.i
+
+# target to preprocess a source file
+tag_service/device-driver/tag_dev.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/tag_service/device-driver/tag_dev.c.i
+.PHONY : tag_service/device-driver/tag_dev.c.i
+
+tag_service/device-driver/tag_dev.s: tag_service/device-driver/tag_dev.c.s
+.PHONY : tag_service/device-driver/tag_dev.s
+
+# target to generate assembly for a file
+tag_service/device-driver/tag_dev.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SOA_Project_TM.dir/build.make CMakeFiles/SOA_Project_TM.dir/tag_service/device-driver/tag_dev.c.s
+.PHONY : tag_service/device-driver/tag_dev.c.s
+
 tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.o: tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c.o
 .PHONY : tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.o
 
@@ -378,6 +402,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... SOA_Project_TM"
+	@echo "... tag_service/device-driver/tag_dev.o"
+	@echo "... tag_service/device-driver/tag_dev.i"
+	@echo "... tag_service/device-driver/tag_dev.s"
 	@echo "... tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.o"
 	@echo "... tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.i"
 	@echo "... tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.s"

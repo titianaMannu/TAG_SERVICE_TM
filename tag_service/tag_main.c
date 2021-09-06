@@ -28,6 +28,7 @@
 #include "systbl_hack/systbl_hack.h"
 #include "tag_flags.h"
 #include "tag.h"
+#include "device-driver/tag_dev.h"
 
 
 /* Usage with Kernel >= 4.20 */
@@ -39,11 +40,15 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tiziana Mannucci <titianamannucci@gmail.com>");
 MODULE_DESCRIPTION("This Module implements a message exchange service based on tags");
-MODULE_INFO(name,
-"tag_service");
 
 /*use this to hack the syscall table*/
 struct module *systbl_hack_mod_ptr;
+
+/* Driver major number. */
+int major_number = 0;
+
+module_param(major_number, int, S_IRUGO);
+MODULE_PARM_DESC(major_number, "Major number for tag-service device driver.");
 
 /* Max Keys*/
 unsigned int max_key = MAX_KEY;
@@ -67,10 +72,12 @@ tag_node_ptr tag_list = NULL;
 int *key_list = NULL;
 DECLARE_RWSEM(key_list_sem);
 
-int tag_get_nr;
-int tag_send_nr;
-int tag_receive_nr;
-int tag_ctl_nr;
+
+int tag_get_nr; // tag_get syscall number
+int tag_send_nr; //tag_send syscall number
+int tag_receive_nr;// tag_receive syscall number
+int tag_ctl_nr;// tag_ctl syscall number
+extern struct file_operations fops;
 
 __SYSCALL_DEFINEx(3, _tag_get, int, key, int, command, int, permissions) {
     int res;
@@ -105,7 +112,10 @@ __SYSCALL_DEFINEx(2, _tag_ctl, int, tag, int, command) {
     return res;
 }
 
-
+/**
+ * @description Initialize the module with all needed structures.
+ * @return 0 or errno is set to the correct error code.
+ */
 int tag_service_init(void) {
     int i;
     printk(KERN_INFO "%s name = %s\n", MODNAME, THIS_MODULE->name);
@@ -129,6 +139,15 @@ int tag_service_init(void) {
     }
     mutex_unlock(&module_mutex);
 
+    /*device driver registration*/
+    major_number = register_chrdev(0, DEVICE_NAME, &fops);
+    if (major_number < 0) {
+        printk(KERN_INFO "%s : error in driver registration\n", MODNAME);
+        printk(KERN_INFO "%s : Failed initialization\n", MODNAME);
+        module_put(systbl_hack_mod_ptr);
+        return -1;
+    }
+    printk(KERN_INFO "%s : %s correctly mounted with major number %d\n", MODNAME, DEVICE_NAME, major_number);
 
     /* Global structs initialization */
     key_list = kzalloc(sizeof(int) * max_key, GFP_KERNEL);
@@ -141,7 +160,7 @@ int tag_service_init(void) {
     for (i = 0; i < max_key; i++) {
         key_list[i] = -1;
     }
-
+    /*allocate memory for the tag list*/
     tag_list = (tag_node_ptr) kzalloc(sizeof(tag_node) * max_tg, GFP_KERNEL);
     if (tag_list == NULL) {
         printk(KERN_INFO "%s : Unable to allocate memory to create tags list.\n", MODNAME);
@@ -183,13 +202,20 @@ int tag_service_init(void) {
     systbl_entry_restore(tag_receive_nr, 1);
     systbl_entry_restore(tag_send_nr, 1);
     systbl_entry_restore(tag_ctl_nr, 1);
-    printk(KERN_INFO "%s : Failed to initialize this module\n", MODNAME);
+    printk(KERN_INFO "%s : Failed initialization\n", MODNAME);
     kfree(tag_list);
     kfree(key_list);
+    if (major_number != 0) {
+        unregister_chrdev(major_number, DEVICE_NAME);
+    }
     module_put(systbl_hack_mod_ptr);
     return -1;
 }
 
+/**
+ * @description Module Cleanup. Deletes from the system call table all the system calls previously inserted
+ * and release all the resources allocated.
+ */
 void tag_service_clean(void) {
     int i;
     if (systbl_entry_restore(tag_get_nr, 1) == 0) {
@@ -205,6 +231,10 @@ void tag_service_clean(void) {
         printk(KERN_INFO "%s : deleted tag_ctl at %d\n", MODNAME, tag_ctl_nr);
     }
 
+    if (major_number != 0) {
+        printk(KERN_INFO "%s : unregister %s.\n", MODNAME, DEVICE_NAME);
+        unregister_chrdev(major_number, DEVICE_NAME);
+    }
 
     kfree(key_list);
     for (i = 0; i < max_tg; i++) {

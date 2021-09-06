@@ -84,6 +84,12 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/device-driver/tag_dev.c">
+			<Option target="SOA_Project_TM"/>
+		</Unit>
+		<Unit filename="/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/device-driver/tag_dev.h">
+			<Option target="SOA_Project_TM"/>
+		</Unit>
 		<Unit filename="/home/tiziana/CLionProjects/TAG_SERVICE_TM/tag_service/systbl_hack/memory-mapper/virtual-to-phisical-memory-mapper.c">
 			<Option target="SOA_Project_TM"/>
 		</Unit>

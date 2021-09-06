@@ -25,7 +25,6 @@
 #include <linux/pgtable.h>
 
 
-//auxiliary stuff
 static inline unsigned long read_content_cr3(void) {
     unsigned long cr3;
     asm volatile(
@@ -54,7 +53,7 @@ static inline unsigned long read_content_cr3(void) {
 
 long page_table_walk(unsigned long vaddr) {
 
-    pgd_t * pml4; //page general directory
+    pgd_t * pml4;
     pud_t *pdp;
     pmd_t *pde;
     pte_t *pte;
@@ -62,21 +61,19 @@ long page_table_walk(unsigned long vaddr) {
     long frame;
 
 
-    // Get PML4 table virtual address translating CR3's content.
-    pml4 = __va(read_content_cr3() & ADDR_MASK) ;
+    pml4 = __va(read_content_cr3() & ADDR_MASK);
     if (!((pml4[PML4(vaddr)].pgd) & VALID)) {
         PAGE_WALK_AUDIT printk(KERN_INFO "%s: PML4 entry not mapped to physical memory.\n", LIB_NAME);
         return NO_MAP;
     }
 
     pdp = __va((pml4[PML4(vaddr)].pgd) & PT_ADDR_MASK);
-    // Check PDP table entry.
     if (!((pdp[PDP(vaddr)].pud) & VALID)) {
         PAGE_WALK_AUDIT printk(KERN_INFO "%s: PDP entry not not mapped to physical memory.\n", LIB_NAME);
         return NO_MAP;
-    }    else if (unlikely((pdp[PDP(vaddr)].pud) & LARGE_PAGE)) {
+    } else if (unlikely((pdp[PDP(vaddr)].pud) & LARGE_PAGE)) {
         //1 GB page case
-        frame= ((pdp[PDP(vaddr)].pud) & PT_ADDR_MASK) >> 30;
+        frame = ((pdp[PDP(vaddr)].pud) & PT_ADDR_MASK) >> 30;
         return frame;
     }
 

@@ -17,15 +17,14 @@
 #include <linux/ipc.h>
 #include <linux/filter.h>
 #include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/rwsem.h>
+#include <linux/module.h>
+#include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/mutex.h>
-
 
 #include "tag_flags.h"
 #include "tag.h"
@@ -37,7 +36,18 @@ extern int max_key;
 extern struct rw_semaphore key_list_sem;
 extern unsigned msg_size;
 
-
+/**
+ * @description Create a new instance associated with the key or opens an existing one by using the key.
+ * This function act differently basing on the command and key combination.
+ *
+ * @param key associated to a tag or IPC_PRIVATE
+ *
+ * @param command Use IPC_CREAT to create a new tag instance associated to the corresponding key or to open an existing one.
+ * If  IPC_CREAT | IPC_EXCL is specified and the tag instance associated to the key already exists an error is generated.
+ *
+ * @param permissions 0 to grant all user access, > 0 if the access is restricted to the creator
+ * @return a tag descriptor on success or an appropriate error code.
+ */
 int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
     if (key > max_key || key < 0) {
@@ -100,6 +110,16 @@ int tag_get(int key, int command, int permissions) {
 
 }
 
+/**
+ * @description Send a message to the corresponding tag-level instance, awake all waiting threads then waits delivery ends up.
+ * This function could be blocking and could be interrupted by a signal.
+ * This service doesn't keep any mesage log; if nobody waits for the incoming message this is discarded.
+ * @param tag tag descriptor
+ * @param level message source level
+ * @param buffer userspace buffer address
+ * @param size buffer lenght, empty messages are anyhow allowed.
+ * @return 0 on success, appropriate error code otherwise
+ */
 int tag_send(int tag, int level, char *buffer, size_t size) {
     tag_ptr_t my_tag;
     char *msg;
@@ -135,7 +155,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
                 return 0;
             }
 
-            /*  alloc memory to copy the content */
+            /*  alloc memory to copy the info */
             msg = (char *) kzalloc(size, GFP_KERNEL);
             if (msg == NULL) {
                 /* release write lock on the message buffer of the corresponding level */
@@ -210,7 +230,15 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 
 }
 
-
+/**
+ * @description This operation blocks the caller untill an incoming message arrives from the corresponding tag-level instance.
+ * The caller could be unlocked even if a signal arrives or another thread calls tag_clt with the AWAKE_ALL command.
+ * @param tag tag descriptor
+ * @param level message source level
+ * @param buffer userspace buffer address
+ * @param size buffer lenght
+ * @return bytes copied on success, appropriate error code otherwise.
+ */
 int tag_receive(int tag, int level, char *buffer, size_t size) {
     int my_epoch_msg, event_wq_ret;
     tag_ptr_t my_tag;
@@ -229,7 +257,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
         /* permisson check */
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
-
+            /*atomically add myself to the presence counter for standing readers of the current epoch  */
             my_epoch_msg = my_tag->msg_rcu_util_list[level]->current_epoch;
             __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], 1);
 
@@ -238,8 +266,9 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
                                                     my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] != NO);
 
-            /*operation can fail also because of the delivery of a Posix signal*/
+
             if (event_wq_ret == -ERESTARTSYS) {
+                /*operation can fail also because of the delivery of a Posix signal*/
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                 up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
@@ -247,7 +276,7 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
             } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == MESSAGE) {
                 /* let's read the incoming message */
                 if (my_tag->msg_store[level]->size > size) {
-                    // provided buffer is not large enough to copy the content of the message
+                    // provided buffer is not large enough to copy the info of the message
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                     up_read(&tag_list[tag].tag_node_rwsem);
 
@@ -300,6 +329,15 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
 }
 
+/**
+ * @description This operation control a tag instance by awakening operation or the by removing operation.
+ * This function act differently basing on the command and key combination.
+ * @param tag tag descriptor
+ * @param command use IPC_RMID command to remove a tag instance, this will fail if there are readers waiting for a message on the corresponding tag.
+ * IPC_RMID command can be combinating with IPC_NOWAIT command to have a nonblocking behavior.
+ * Use the AWAKE_ALL command to wake up all thread waiting for a message on the corresponding tag indipendently of the level.
+ * @return positive value on success, negative on failure and errno is set to the correct error code.
+ */
 int tag_ctl(int tag, int command) {
     int ret_key;
     if (tag < 0 || tag >= max_tg) {
@@ -352,6 +390,12 @@ void init_rcu_util(rcu_util_ptr rcu_util) {
     rcu_util->current_epoch = 0;
 }
 
+/**
+ * @description Allows tag instance creation and correct initialization.
+ * @param in_key associated to a tag or IPC_PRIVATE
+ * @param permissions 0 to grant all user access, > 0 if the access is restricted to the creator
+ * @return tag descriptor on sussess, an error code on failure
+ */
 int create_tag(int in_key, int permissions) {
     rcu_util_ptr new_msg_rcu;
     int i, j;
@@ -445,7 +489,9 @@ void tag_cleanup_mem(tag_ptr_t tag) {
 }
 
 /**
- * take write lock on tag_list[tag]->tag_node_rwsem OUTSIDE of this function and use nowait=1 to provide a nonblocking
+ * @description Allows tag instance deletion.
+ *
+ * Be carefull : take write lock on tag_list[tag]->tag_node_rwsem OUTSIDE of this function and use nowait=1 to provide a nonblocking
  * behavior; if nowait is specified and the resource is not immediately available the operation abort and -EBUSY returned
  */
 int remove_tag(int tag, int nowait) {
@@ -457,6 +503,7 @@ int remove_tag(int tag, int nowait) {
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
 
             if (ret_key != IPC_PRIVATE) {
+                /*first of all remove the key*/
                 if (nowait) {
                     if (down_write_trylock(&key_list_sem)) {
                         key_list[ret_key] = -1;
@@ -489,6 +536,11 @@ int remove_tag(int tag, int nowait) {
     }
 }
 
+/**
+ * @description Awakes all thread awaiting for a message on the corresponding tag indipendently of the level.
+ * @param tag tag descriptor
+ * @return 0 on success, error code on failure.
+ */
 int awake_all(int tag) {
     int grace_epoch, next_epoch, level;
     tag_ptr_t my_tag;
