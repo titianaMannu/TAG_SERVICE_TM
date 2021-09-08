@@ -1,6 +1,7 @@
 /**
  * @file tag.c
- * @brief todo insert a detailed description
+ *
+ * @description This file contains the code implementation for the tag_service module.
  *
  * @author Tiziana mannucci
  *
@@ -38,13 +39,10 @@ extern unsigned msg_size;
 
 /**
  * @description Create a new instance associated with the key or opens an existing one by using the key.
- * This function act differently basing on the command and key combination.
- *
+ * This function acts differently basing on the command and key combination.
  * @param key associated to a tag or IPC_PRIVATE
- *
  * @param command Use IPC_CREAT to create a new tag instance associated to the corresponding key or to open an existing one.
  * If  IPC_CREAT | IPC_EXCL is specified and the tag instance associated to the key already exists an error is generated.
- *
  * @param permissions 0 to grant all user access, > 0 if the access is restricted to the creator
  * @return a tag descriptor on success or an appropriate error code.
  */
@@ -58,13 +56,12 @@ int tag_get(int key, int command, int permissions) {
     if (key == IPC_PRIVATE) {
 
         tag_descriptor = create_tag(key, permissions);
-        printk("tag descriptor %d\n", tag_descriptor);
         if (tag_descriptor < 0) {
             printk(KERN_INFO "%s : Unable to create a new tag.\n", MODNAME);
             //tag creation failed
             return -ENOMEM;
         }
-
+        /*with IPC_PRIVATE the tag is not associate to a key*/
         return tag_descriptor;
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
@@ -111,7 +108,7 @@ int tag_get(int key, int command, int permissions) {
 }
 
 /**
- * @description Send a message to the corresponding tag-level instance, awake all waiting threads then waits delivery ends up.
+ * @description Send a message to the corresponding tag-level instance, awake all waiting threads then wait delivery ends up.
  * This function could be blocking and could be interrupted by a signal.
  * This service doesn't keep any mesage log; if nobody waits for the incoming message this is discarded.
  * @param tag tag descriptor
@@ -137,7 +134,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
     if (my_tag != NULL) {
         /* permisson check */
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
-            /* other writers on the same tag-level exclusion */
+            /* other senders on the same tag-level exclusion */
             if (mutex_lock_interruptible(&(my_tag->msg_rcu_util_list[level]->mtx)) == -EINTR) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
@@ -196,7 +193,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
             /* wake up all thread waiting on the queue corresponding to the grace_epoch */
             wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
 
-            /*wait until all readers have been consumed the message avoiding busy-waiting */
+            /*wait until all readers have been consumed the message  */
             while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
             /* here all readerers on the grace_epoch consumed the message */
@@ -331,12 +328,12 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
 
 /**
  * @description This operation control a tag instance by awakening operation or the by removing operation.
- * This function act differently basing on the command and key combination.
+ * This function acts differently basing on the command and key combination.
  * @param tag tag descriptor
  * @param command use IPC_RMID command to remove a tag instance, this will fail if there are readers waiting for a message on the corresponding tag.
  * IPC_RMID command can be combinating with IPC_NOWAIT command to have a nonblocking behavior.
  * Use the AWAKE_ALL command to wake up all thread waiting for a message on the corresponding tag indipendently of the level.
- * @return positive value on success, negative on failure and errno is set to the correct error code.
+ * @return non-negative value on success, negative on failure and errno is set to the correct error code.
  */
 int tag_ctl(int tag, int command) {
     int ret_key;
@@ -356,6 +353,7 @@ int tag_ctl(int tag, int command) {
         // every reader and every sender currently working with this tag takes a read lock
         // we obtain the write lock when neither readers and writers are here anymore
         if (down_write_trylock(&tag_list[tag].tag_node_rwsem)) {
+            // trylock is used to avoid deadlock, see documentation for detailed description.
             if ((command ^ IPC_RMID) == IPC_NOWAIT) {
                 /* case of REMOVE | IPC_NOWAIT
                  * let's remove the tag */
@@ -501,9 +499,9 @@ int remove_tag(int tag, int nowait) {
         ret_key = my_tag->key;
 
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
-
+            /*first of all remove the key; this way the tag cannot be invoked anymore */
             if (ret_key != IPC_PRIVATE) {
-                /*first of all remove the key*/
+                /*use nowait is IPC_NOWAIT is specified*/
                 if (nowait) {
                     if (down_write_trylock(&key_list_sem)) {
                         key_list[ret_key] = -1;
@@ -538,6 +536,7 @@ int remove_tag(int tag, int nowait) {
 
 /**
  * @description Awakes all thread awaiting for a message on the corresponding tag indipendently of the level.
+ * Conceptually acts as a sender but an awake notification is sent instead of a message.
  * @param tag tag descriptor
  * @return 0 on success, error code on failure.
  */
@@ -572,7 +571,7 @@ int awake_all(int tag) {
                     asm volatile ("mfence":: : "memory");
                     /* wake up all thread waiting on the queue corresponding to the grace_epoch */
                     wake_up_all(&my_tag->the_queue_head[level][grace_epoch]);
-
+                    /*wait until all readers have been consumed the awake notification */
                     while (my_tag->msg_rcu_util_list[level]->standings[grace_epoch] > 0) schedule();
 
                     /* release locks previously aquired */

@@ -1,10 +1,11 @@
 /**
  * @file systbl_hack_service.c
- * @brief todo insert a detailed description  description
+ *
+ * @description Contains useful functions for the systbl_hack module .
  *
  * @author Tiziana mannucci
  *
- * @mail titianamannucci@gmail.com
+ * @mail "titianamannucci@gmail.com
  *
  * @date 13/08/2021
  *
@@ -67,7 +68,10 @@ inline void disable_write_protection(void) {
     safe_write_cr0(cr0 & ~X86_CR0_WP);
 }
 
-
+/**
+ * @description Research of the system call table address and of the free entries.
+ * @return total number of the free entries founded, -1 on failure.
+ */
 int systbl_search(void) {
     void *current_page;
     for (current_page = KERNEL_START; current_page < KERNEL_END; current_page += _PAGE_SIZE) {
@@ -77,7 +81,6 @@ int systbl_search(void) {
                 printk(KERN_DEBUG "%s : found syscall table at %px\n", MODNAME, sys_call_table_address);
                 printk(KERN_DEBUG "%s : found ni syscall at %px\n", MODNAME, sys_ni_syscall_address);
             }
-
             find_free_entries();
             return free_entry_founded;
         }
@@ -103,7 +106,7 @@ int match_pattern(void *page) {
                 && page_table_walk((unsigned long) next_page) == NO_MAP
                 )
             break;
-        // go for patter matching
+        //check patter matching
         test = page + i;
         if (
                 (test[FIRST_NI_SYSCALL] != 0x0)
@@ -134,6 +137,10 @@ int compatible(void **addr) {
 }
 
 
+/**
+ * @description Linear esearch of free entries in the system call table, setup of the state-map.
+ * @return total number of the free entries founded
+ */
 int find_free_entries(void) {
     int i = FIRST_NI_SYSCALL;
     free_entry_founded = 0;
@@ -153,6 +160,11 @@ int find_free_entries(void) {
     return free_entry_founded;
 }
 
+/**
+ * @description Insert a new system call by using the knowledge acquired with the previous research.
+ * @param new_syscall  function pointer to insert
+ * @return table index hacked on success, -1 on failure.
+ */
 int systbl_hack(void *new_syscall) {
     int index;
     int i;
@@ -176,7 +188,7 @@ int systbl_hack(void *new_syscall) {
             disable_write_protection();
 
             sys_call_table_address[index] = new_syscall; //new system call insertion
-            table_status_map[index] = 0; // set this entry as not available
+            table_status_map[index] = 0; // set this entry as not available into the status-map
             asm volatile ("sfence":: : "memory");
 
             enable_write_protection();
@@ -197,9 +209,15 @@ int systbl_hack(void *new_syscall) {
 
 EXPORT_SYMBOL(systbl_hack);
 
+/**
+ * @description restore the spcified table entry of the system call table.
+ * @param index_restorable table index to restore
+ * @param use_lock if 0 you MUST acquire the lock BEFORE calling this funtion.
+ * @return 0 on success, -1 on failure.
+ */
 int systbl_entry_restore(int index_restorable, int use_lock) {
 
-
+    //must perform operation on the table atomically.
     if (use_lock) mutex_lock(&systbl_mtx);
 
     if (index_restorable < 0 || !was_ni(index_restorable)) {
@@ -212,7 +230,7 @@ int systbl_entry_restore(int index_restorable, int use_lock) {
         cr0 = read_cr0();
         disable_write_protection();
 
-        sys_call_table_address[index_restorable] = sys_ni_syscall_address;
+        sys_call_table_address[index_restorable] = sys_ni_syscall_address; // restore ni value
         table_status_map[index_restorable] = 1; //replace status of the entry to 1 (= FREE)
         asm volatile ("sfence":: : "memory");
 
@@ -231,7 +249,7 @@ EXPORT_SYMBOL(systbl_entry_restore);
 
 void systbl_total_restore(void) {
     int i = 0, ni_index;
-
+    //must perform operation on the table atomically.
     mutex_lock(&systbl_mtx);
     for (; i < MAX_FREE_ENTRIES; i++) {
         ni_index = ni_free_positions[i];

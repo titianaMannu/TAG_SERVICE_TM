@@ -25,7 +25,8 @@ add_executable(SOA_Project_TM
         user/user2.c
         user/awake.c
         user/remove.c
-        tag_service/device-driver/tag_dev.c tag_service/device-driver/tag_dev.h)
+        tag_service/device-driver/tag_dev.c
+        tag_service/device-driver/tag_dev.h)
 
 
 # CLion IDE will find symbols from <linux/*>

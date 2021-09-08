@@ -1,6 +1,7 @@
 /**
  * @file
- * @brief todo insert a detailed description  description
+ *
+ * @description This file contains module initialization entry-point and cleanup for ther tag_service module.
  *
  * @author Tiziana mannucci
  *
@@ -123,7 +124,7 @@ int tag_service_init(void) {
     if (max_tg < MAX_TAG) max_tg = MAX_TAG;
     if (msg_size < MSG_LEN) msg_size = MSG_LEN;
 
-    printk(KERN_INFO"%s: Initializing...\n", MODNAME);
+    printk(KERN_INFO "%s: Initializing...\n", MODNAME);
 
     if (mutex_lock_interruptible(&module_mutex) == -EINTR) return -EINTR;
 

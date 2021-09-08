@@ -45,16 +45,38 @@ int compatible(void **addr);
 
 int match_pattern(void *page);
 
+/**
+ * @description Linear esearch of free entries in the system call table, setup of the state-map.
+ * @return total number of the free entries founded
+ */
 int find_free_entries(void);
 
 int was_ni(int pos);
 
+/**
+ * @description Insert a new system call by using the knowledge acquired with the previous research.
+ * @param new_syscall  function pointer to insert
+ * @return table index hacked on success, -1 on failure.
+ */
 int systbl_hack(void *new_syscall);
 
+/**
+ * @description restore the spcified table entry of the system call table.
+ * @param index_restorable table index to restore
+ * @param use_lock if 0 you MUST acquire the lock BEFORE calling this funtion.
+ * @return 0 on success, -1 on failure.
+ */
 int systbl_entry_restore(int index_restorable, int use_lock);
 
+/**
+ * @description Research of the system call table address and of the free entries correesponding to the ni-syscall.
+ * @return total number of the free entries founded, -1 on failure.
+ */
 int systbl_search(void);
 
+/**
+ * @description Restore the initial state (no knowledge at all)
+ */
 void systbl_total_restore(void);
 
 #endif //SOA_PROJECT_TM_SYSTBL_HACK_SERVICE_H

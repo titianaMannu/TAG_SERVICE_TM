@@ -35,8 +35,8 @@ typedef struct msg_t *msg_ptr_t;
 struct rcu_util {
     unsigned long standings[2];
     int current_epoch;
-    int awake[2];
-    struct mutex mtx;
+    int awake[2]; // used as awake condition for the wait event queue
+    struct mutex mtx; // used to have mutual exclusion between senders
 };
 typedef struct rcu_util *rcu_util_ptr;
 
@@ -46,7 +46,7 @@ struct tag_t {
     kuid_t uid; // creator uid
     bool perm; // 1 if it is restricted to the creator user; 0 if it is public (all case)
     msg_ptr_t msg_store[LEVELS];
-    wait_queue_head_t the_queue_head[LEVELS][2];
+    wait_queue_head_t the_queue_head[LEVELS][2]; //wait event queue head
     rcu_util_ptr msg_rcu_util_list[LEVELS];
 };
 typedef struct tag_t *tag_ptr_t;

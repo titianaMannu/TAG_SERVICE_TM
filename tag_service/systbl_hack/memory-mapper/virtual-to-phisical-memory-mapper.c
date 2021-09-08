@@ -1,6 +1,6 @@
 /**
  * @file virtual-to-phisical-memory-mapper.c
- * @brief todo insert a detailed description  description
+ * @description Page table walk implementation inspired by VTPMO module provided during the SOA course.
  *
  * @author Tiziana mannucci
  *
@@ -9,20 +9,19 @@
  * @date 13/08/2021
  *
  *
- * Inspired by VTPMO module provided during the the SOA course
- *
  */
 
 #include "virtual-to-phisical-memory-mapper.h"
 
 
 #include <linux/module.h>
+#include <linux/irqflags.h>
+#include <linux/pgtable.h>
 #include <linux/kernel.h>
 #include <linux/compiler.h>
 #include <linux/mm.h>
 #include <asm/page.h>
-#include <linux/irqflags.h>
-#include <linux/pgtable.h>
+
 
 
 static inline unsigned long read_content_cr3(void) {

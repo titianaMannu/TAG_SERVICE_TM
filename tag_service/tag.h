@@ -7,7 +7,7 @@
 
 
 #ifdef  __KERNEL__
-/*Kernel flags*/
+
 #define MODNAME "TAG-SERVICE"
 
 #define LEVELS 32

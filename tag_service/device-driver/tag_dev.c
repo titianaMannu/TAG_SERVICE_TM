@@ -1,3 +1,7 @@
+//
+// Created by tiziana on 9/1/21.
+//
+
 #include <linux/cdev.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -168,7 +172,7 @@ ssize_t read_tag_status(struct file *filp, char *buff, size_t len, loff_t *off) 
 int release_tag_status(struct inode *inode, struct file *file) {
     if (status_list != NULL) kfree(status_list);
     if (info.content != NULL) vfree(info.content);
-    info.content = 0;
+    info.content_size = 0;
     mutex_unlock(&device_state);
     printk("%s : %s succesfully closed.\n", MODNAME, DEVICE_NAME);
     return 0;

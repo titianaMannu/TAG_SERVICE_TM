@@ -1,6 +1,7 @@
 /**
  * @file systbl_hack.c
- * @brief todo insert a detailed description  description
+ *
+ * @description This file contains module initialization entry-point and cleanup for ther systbl_hack module.
  *
  * @author Tiziana mannucci
  *
