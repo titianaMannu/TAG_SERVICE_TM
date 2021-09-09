@@ -99,6 +99,8 @@ int tag_ctl(int tag, int command);
 2. Use `~cat /de/mydev` to open and read the device driver.
 3. Use uninstall.sh to completely uninstall the service.
 
+>  install.sh and uninstall.sh require root privileges.
+
 ## Usage
 
 In the **"user"** folder some examples are provided. Basically the **tag_lib.h** header exposes the system calls, be
