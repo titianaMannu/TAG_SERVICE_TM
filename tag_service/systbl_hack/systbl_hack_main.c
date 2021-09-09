@@ -1,5 +1,5 @@
 /**
- * @file systbl_hack.c
+ * @file systbl_hack_main.c
  *
  * @description This file contains module initialization entry-point and cleanup for ther systbl_hack module.
  *

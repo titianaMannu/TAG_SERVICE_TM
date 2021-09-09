@@ -2,7 +2,7 @@
  * @file virtual-to-phisical-memory-mapper.c
  * @description Page table walk implementation inspired by VTPMO module provided during the SOA course.
  *
- * @author Tiziana mannucci
+ * @author Tiziana Mannucci
  *
  * @mail titianamannucci@gmail.com
  *

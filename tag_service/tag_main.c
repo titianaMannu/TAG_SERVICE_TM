@@ -1,9 +1,9 @@
 /**
- * @file
+ * @file tag_main.c
  *
  * @description This file contains module initialization entry-point and cleanup for ther tag_service module.
  *
- * @author Tiziana mannucci
+ * @author Tiziana Mannucci
  *
  * @mail titianamannucci@gmail.com
  *
