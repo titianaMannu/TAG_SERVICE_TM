@@ -3,7 +3,7 @@
  *
  * @description This file contains module initialization entry-point and cleanup for ther systbl_hack module.
  *
- * @author Tiziana mannucci
+ * @author Tiziana Mannucci
  *
  * @mail titianamannucci@gmail.com
  *

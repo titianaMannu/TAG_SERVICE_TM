@@ -3,9 +3,9 @@
  *
  * @description Contains useful functions for the systbl_hack module .
  *
- * @author Tiziana mannucci
+ * @author Tiziana Mannucci
  *
- * @mail "titianamannucci@gmail.com
+ * @mail titianamannucci@gmail.com
  *
  * @date 13/08/2021
  *
@@ -93,8 +93,8 @@ int systbl_search(void) {
 EXPORT_SYMBOL(systbl_search);
 
 int match_pattern(void *page) {
-    void *next_page = page;
-    void **test = page;
+    void *next_page;
+    void **test;
     unsigned long i = 0;
 
     for (; i < PAGE_SIZE; i += sizeof(void *)) {

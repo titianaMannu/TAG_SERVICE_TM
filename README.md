@@ -1,64 +1,24 @@
-//
-// Created by tiziana on 16/08/21.
-//
+# TAG-based data exchange service
 
-#ifndef SOA_PROJECT_TM_TAG_FLAGS_H
+## Short Description
 
-#include <stdbool.h>
-#include <linux/rwsem.h>
-#include <linux/uidgid.h>
-#include "tag.h"
+This project implements a Kernel module for the tag-based message exchange service. Conceptually it is a
+publish/subscribe system with a critical difference, there is no a central entity wich takes the message log and wich
+provides decoupling among readers and writers.
 
-#define SOA_PROJECT_TM_TAG_FLAGS_H
+- Readers follow a tag-level and wait untill a message arrives.
+- A writer sends a messsage and wakes up all awaiting threads,then wait delivery ends up. If nobody is waiting for a
+  message, just drop it.
+- Awaker: conceptually acts as a writer but sends an awake notification instead of a message. This is repeated for every
+  level of a tag.
+- Remover: Removes a tag when there are no more readers.
 
+For more informations and implemntation details, please see the documentation provided in the **"documentation"**
+folder.
 
-#define NO (0)
-#define MESSAGE (NO+1)
-#define AWAKE (MESSAGE + 1)
+## API
 
-#define GOT_PERMISSION(permission, do_check)({ \
-        /* only creator user can access to this tag and the current user correspond to him */ \
-        (do_check && permission == current_uid().val)  ||                                      \
-        /* all user can access to this tag */                                              \
-        !do_check ||                 \
-        /* root user */                             \
-        current_uid().val == 0; \
-})
-
-
-struct msg_t {
-    char *msg; // message
-    size_t size; // message size
-};
-typedef struct msg_t *msg_ptr_t;
-
-struct rcu_util {
-    unsigned long standings[2];
-    int current_epoch;
-    int awake[2]; // used as awake condition for the wait event queue
-    struct mutex mtx; // used to have mutual exclusion between senders
-};
-typedef struct rcu_util *rcu_util_ptr;
-
-
-struct tag_t {
-    int key; //  key associate to a tag
-    kuid_t uid; // creator uid
-    bool perm; // true if it is restricted to the creator user; false if it is public (all case)
-    msg_ptr_t msg_store[LEVELS];
-    wait_queue_head_t the_queue_head[LEVELS][2]; //wait event queue head
-    rcu_util_ptr msg_rcu_util_list[LEVELS];
-};
-typedef struct tag_t *tag_ptr_t;
-
-
-typedef struct tag_info_t {
-    tag_ptr_t tag_ptr;
-    struct rw_semaphore tag_node_rwsem;
-} tag_node;
-
-typedef tag_node *tag_node_ptr;
-
+```c
 /**
  * @description Create a new instance associated with the key or opens an existing one by using the key.
  * This function acts differently basing on the command and key combination.
@@ -89,7 +49,7 @@ int tag_get(int key, int command, int permissions);
  * ENOMEM: Out of memory.\n
  * ENOENT: Tag doesn't exist.\n
  * EINTR: Stopped, interrupt occured.\n
- * EPERM: Operation not permitted.\n
+ * EPERM: Operation not permited.\n
  * EFAULT: Message delivery fault.\n
  */
 int tag_send(int tag, int level, char *buffer, size_t size);
@@ -126,28 +86,31 @@ int tag_receive(int tag, int level, char *buffer, size_t size);
  * EBUSY: Resource busy.\n
  * ENOENT: Tag doesn't exist.\n
  * EINTR: Stopped, interrupt occured.\n
- * EPERM: Operation not permitted.\n
+ * EPERM: Operation not permited.\n
  */
 int tag_ctl(int tag, int command);
 
-void tag_cleanup_mem(tag_ptr_t tag);
 
-int awake_all(int tag);
+```
 
-/**
- * @description Allows tag instance creation and correct initialization.
- * @param in_key associated to a tag or IPC_PRIVATE
- * @param permissions 0 to grant all user access, > 0 if the access is restricted to the creator
- * @return tag descriptor on sussess, an error code on failure
- */
-int create_tag(int in_key, int permissions);
+## Installation
 
-/**
- * @description Allows tag instance deletion.
- *
- * Be carefull : take write lock on tag_list[tag]->tag_node_rwsem OUTSIDE of this function and use nowait=1 to provide a nonblocking
- * behavior; if nowait is specified and the resource is not immediately available the operation abort and -EBUSY returned
- */
-int remove_tag(int tag, int nowait);
+1. Use install.sh to compile and insert the module.
+2. Use `~cat /de/mydev` to open and read the device driver.
+3. Use uninstall.sh to completely uninstall the service.
 
-#endif //SOA_PROJECT_TM_TAG_FLAGS_H
+## Usage
+
+In the **"user"** folder some examples are provided. Basically the **tag_lib.h** header exposes the system calls, be
+carefull system call numers must be adapted to the current installation by using the information printed by the
+**install.sh** script.
+
+>  Required Kernel verison  >= 4.20; Tested on 5.11.0-27-generic
+
+## Development Environment
+
+![](clion.png)
+
+
+**CLion** was used to develop the entire project.
+To have a better experience use this Tool if you want to read the code provided.

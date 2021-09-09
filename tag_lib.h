@@ -12,7 +12,7 @@
 
 #endif //SOA_PROJECT_TM_TAG_LIB_H
 
-/*change those values by check dmsg once the module is inserted */
+/*change those values by check dmsg after module insert */
 #define GET_NR 134
 #define SND_NR 156
 #define RCV_NR 174

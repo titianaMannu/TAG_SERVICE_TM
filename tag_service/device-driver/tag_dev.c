@@ -34,7 +34,7 @@ struct file_operations fops = {
  * Be carefull, this device driver cannot be accessed in time sharing (single istance)
  * if someone else try to open a new session without closing the current one this will cause an error condition.
  *
- * @param inode dev file inode
+ * @param inode file inode
  * @param file file struct
  * @return 0 or errno is set to a correct value
  */
@@ -83,7 +83,7 @@ int open_tag_status(struct inode *inode, struct file *file) {
 
         up_read(&tag_list[i].tag_node_rwsem);
     }
-    /*Here we have collected all the infrmation need to build the text*/
+    /*Here we have collected all the infrmation needed to build the text*/
     res = build_content();
     if (res < 0) {
         kfree(status_list);

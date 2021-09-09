@@ -3,7 +3,7 @@
  *
  * @description This file contains the code implementation for the tag_service module.
  *
- * @author Tiziana mannucci
+ * @author Tiziana Mannucci
  *
  * @mail titianamannucci@gmail.com
  *
@@ -21,7 +21,6 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/rwsem.h>
-#include <linux/module.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
@@ -34,8 +33,9 @@ extern tag_node_ptr tag_list;
 extern int max_tg;
 extern int *key_list;
 extern int max_key;
-extern struct rw_semaphore key_list_sem;
+//extern struct rw_semaphore key_list_mtx;
 extern unsigned msg_size;
+static DEFINE_MUTEX(key_list_mtx);
 
 /**
  * @description Create a new instance associated with the key or opens an existing one by using the key.
@@ -45,6 +45,11 @@ extern unsigned msg_size;
  * If  IPC_CREAT | IPC_EXCL is specified and the tag instance associated to the key already exists an error is generated.
  * @param permissions 0 to grant all user access, > 0 if the access is restricted to the creator
  * @return a tag descriptor on success or an appropriate error code.
+ * @errors
+ * EINVAL: Invalid Arguments.\n
+ * ENOMEM: Out of memory.\n
+ * EEXIST: Tag already exists and IPC_EXCL is specified with IPC_CREAT.\n
+ * EEAGAIN: Operation failed, but if you retry may success.\n
  */
 int tag_get(int key, int command, int permissions) {
     int tag_descriptor;
@@ -67,12 +72,12 @@ int tag_get(int key, int command, int permissions) {
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
     if ((command ^ IPC_EXCL) == IPC_CREAT || command == IPC_CREAT) {
         /*case of IPC_CREAT | IPC_EXCL  or just IPC_CREAT */
-        if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
+        if (mutex_lock_interruptible(&key_list_mtx) == -EINTR) return -EINTR;
 
         if (key_list[key] != -1) {
             //corresponding tag already exists
             tag_descriptor = key_list[key];
-            up_write(&key_list_sem);
+            mutex_unlock(&key_list_mtx);
 
             /*case of IPC_CREAT | IPC_EXCL */
             if ((command ^ IPC_CREAT) == IPC_EXCL) {
@@ -87,7 +92,7 @@ int tag_get(int key, int command, int permissions) {
         tag_descriptor = create_tag(key, permissions);
         if (tag_descriptor < 0) {
             printk(KERN_INFO "%s : Unable to create a new tag.", MODNAME);
-            up_write(&key_list_sem);
+            mutex_unlock(&key_list_mtx);
             //tag creation failed
             return -ENOMEM;
         }
@@ -95,7 +100,7 @@ int tag_get(int key, int command, int permissions) {
         //modify key-list: insert a new tag associated to the key
         key_list[key] = tag_descriptor;
         //release lock
-        up_write(&key_list_sem);
+        mutex_unlock(&key_list_mtx);
 
         return tag_descriptor;
 
@@ -110,12 +115,19 @@ int tag_get(int key, int command, int permissions) {
 /**
  * @description Send a message to the corresponding tag-level instance, awake all waiting threads then wait delivery ends up.
  * This function could be blocking and could be interrupted by a signal.
- * This service doesn't keep any mesage log; if nobody waits for the incoming message this is discarded.
+ * This service doesn't keep any message log; if nobody waits for the incoming message this is discarded.
  * @param tag tag descriptor
  * @param level message source level
  * @param buffer userspace buffer address
  * @param size buffer lenght, empty messages are anyhow allowed.
  * @return 0 on success, appropriate error code otherwise
+ * @errors
+ * EINVAL: Invalid Arguments.\n
+ * ENOMEM: Out of memory.\n
+ * ENOENT: Tag doesn't exist.\n
+ * EINTR: Stopped, interrupt occured.\n
+ * EPERM: Operation not permitted.\n
+ * EFAULT: Message delivery fault.\n
  */
 int tag_send(int tag, int level, char *buffer, size_t size) {
     tag_ptr_t my_tag;
@@ -235,6 +247,14 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
  * @param buffer userspace buffer address
  * @param size buffer lenght
  * @return bytes copied on success, appropriate error code otherwise.
+ * @errors
+ * EINVAL: Invalid Arguments.\n
+ * ENOBUFS: Not enough buffer space available.\n
+ * ENOENT: Tag doesn't exist.\n
+ * EINTR: Stopped, interrupt occured.\n
+ * EPERM: Operation not permitted.\n
+ * EFAULT: Message recovery fault.\n
+ * ECANCELED: Operation canceled because of AWAKE notification.\n
  */
 int tag_receive(int tag, int level, char *buffer, size_t size) {
     int my_epoch_msg, event_wq_ret;
@@ -334,6 +354,12 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
  * IPC_RMID command can be combinating with IPC_NOWAIT command to have a nonblocking behavior.
  * Use the AWAKE_ALL command to wake up all thread waiting for a message on the corresponding tag indipendently of the level.
  * @return non-negative value on success, negative on failure and errno is set to the correct error code.
+ * @errors
+ * EINVAL: Invalid Arguments.\n
+ * EBUSY: Resource busy.\n
+ * ENOENT: Tag doesn't exist.\n
+ * EINTR: Stopped, interrupt occured.\n
+ * EPERM: Operation not permitted.\n
  */
 int tag_ctl(int tag, int command) {
     int ret_key;
@@ -503,17 +529,17 @@ int remove_tag(int tag, int nowait) {
             if (ret_key != IPC_PRIVATE) {
                 /*use nowait is IPC_NOWAIT is specified*/
                 if (nowait) {
-                    if (down_write_trylock(&key_list_sem)) {
+                    if (mutex_trylock(&key_list_mtx)) {
                         key_list[ret_key] = -1;
-                        up_write(&key_list_sem);
+                        mutex_unlock(&key_list_mtx);
                     } else {
                         return -EBUSY;
                     }
 
                 } else {
-                    if (down_write_killable(&key_list_sem) == -EINTR) return -EINTR;
+                    if (mutex_lock_interruptible(&key_list_mtx) == -EINTR) return -EINTR;
                     key_list[ret_key] = -1;
-                    up_write(&key_list_sem);
+                    mutex_unlock(&key_list_mtx);
                 }
             }
             /* delete the tag from the tag_list */

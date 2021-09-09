@@ -71,7 +71,6 @@ MODULE_PARM_DESC(msg_size, "Max message size.");
 
 tag_node_ptr tag_list = NULL;
 int *key_list = NULL;
-DECLARE_RWSEM(key_list_sem);
 
 
 int tag_get_nr; // tag_get syscall number
