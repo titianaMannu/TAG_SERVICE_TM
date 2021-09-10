@@ -33,7 +33,6 @@ extern tag_node_ptr tag_list;
 extern int max_tg;
 extern int *key_list;
 extern int max_key;
-//extern struct rw_semaphore key_list_mtx;
 extern unsigned msg_size;
 static DEFINE_MUTEX(key_list_mtx);
 

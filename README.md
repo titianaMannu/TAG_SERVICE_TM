@@ -96,7 +96,7 @@ int tag_ctl(int tag, int command);
 ## Installation
 
 1. Use install.sh to compile and insert the module.
-2. Use `~cat /de/mydev` to open and read the device driver.
+2. Use `~cat /dev/mydev` to open and read the device driver.
 3. Use uninstall.sh to completely uninstall the service.
 
 >  install.sh and uninstall.sh require root privileges.

@@ -168,7 +168,7 @@ int find_free_entries(void) {
 int systbl_hack(void *new_syscall) {
     int index;
     int i;
-    //must perform operation on the table atomically.
+    //must perform operation on the table in mutual exclusion.
     mutex_lock(&systbl_mtx);
 
     if (free_entry_founded == 0) {
@@ -217,7 +217,7 @@ EXPORT_SYMBOL(systbl_hack);
  */
 int systbl_entry_restore(int index_restorable, int use_lock) {
 
-    //must perform operation on the table atomically.
+    //must perform operation on the table in mutual exclusion.
     if (use_lock) mutex_lock(&systbl_mtx);
 
     if (index_restorable < 0 || !was_ni(index_restorable)) {
@@ -249,7 +249,7 @@ EXPORT_SYMBOL(systbl_entry_restore);
 
 void systbl_total_restore(void) {
     int i = 0, ni_index;
-    //must perform operation on the table atomically.
+    //must perform operation on the table in mutual esclusion.
     mutex_lock(&systbl_mtx);
     for (; i < MAX_FREE_ENTRIES; i++) {
         ni_index = ni_free_positions[i];
