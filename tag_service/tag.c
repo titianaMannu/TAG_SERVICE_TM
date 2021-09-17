@@ -138,6 +138,13 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
         /* Invalid Arguments error */
         return -EINVAL;
     }
+
+    if (size == 0) {
+        /* nothing to copy*/
+        /* zero lenght messages are anyhow allowed*/
+        return 0;
+    }
+
     /* take read lock to avoid that someone deletes the tag entry during my job*/
     if (down_read_killable(&tag_list[tag].tag_node_rwsem) == -EINTR) return -EINTR;
 
@@ -150,17 +157,6 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
                 /*release r_lock on the tag_list i-th entry previously obtained*/
                 up_read(&tag_list[tag].tag_node_rwsem);
                 return -EINTR;
-            }
-
-            if (size == 0) {
-                /* nothing to copy*/
-                /* release write lock on the message buffer of the corresponding level */
-                mutex_unlock(&(my_tag->msg_rcu_util_list[level]->mtx));
-                /*release r_lock on the tag_list i-th entry previously obtained*/
-                up_read(&tag_list[tag].tag_node_rwsem);
-
-                /* zero lenght messages are anyhow allowed*/
-                return 0;
             }
 
             /*  alloc memory to copy the info */
@@ -258,7 +254,7 @@ int tag_send(int tag, int level, char *buffer, size_t size) {
 int tag_receive(int tag, int level, char *buffer, size_t size) {
     int my_epoch_msg, event_wq_ret;
     tag_ptr_t my_tag;
-    unsigned long ret;
+    unsigned long res;
 
     if (tag < 0 || tag >= max_tg || level >= LEVELS || level < 0 || buffer == NULL || size < 0) {
         /* Invalid Arguments error */
@@ -299,22 +295,22 @@ int tag_receive(int tag, int level, char *buffer, size_t size) {
                     return -ENOBUFS;
                 }
 
-                ret = copy_to_user(buffer, my_tag->msg_store[level]->msg, my_tag->msg_store[level]->size);
+                res = copy_to_user(buffer, my_tag->msg_store[level]->msg, my_tag->msg_store[level]->size);
                 asm volatile ("mfence":: : "memory");
-                if (ret != 0) {
+                if (res != 0) {
                     __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
                     up_read(&tag_list[tag].tag_node_rwsem);
                     /* error during the copy-- partial delivery of the message not supported */
                     return -EFAULT;
                 }
 
-                ret = my_tag->msg_store[level]->size;
+                res = my_tag->msg_store[level]->size;
 
                 __sync_fetch_and_add(&my_tag->msg_rcu_util_list[level]->standings[my_epoch_msg], -1);
 
                 up_read(&tag_list[tag].tag_node_rwsem);
 
-                return (int) ret;
+                return (int) res;
 
             } else if (my_tag->msg_rcu_util_list[level]->awake[my_epoch_msg] == AWAKE) {
                 /* we have been awoken by AWAKEALL routine */
@@ -373,14 +369,14 @@ int tag_ctl(int tag, int command) {
     }
     /* use xor funtions a xor (b xor a ) = a to isolate a command bit */
     if ((command ^ IPC_NOWAIT) == IPC_RMID || command == IPC_RMID) {
-        /*case of REMOVE | IPC_NOWAIT  or just REMOVE */
+        /*case of IPC_RMID | IPC_NOWAIT  or just REMOVE */
 
         // every reader and every sender currently working with this tag takes a read lock
         // we obtain the write lock when neither readers and writers are here anymore
         if (down_write_trylock(&tag_list[tag].tag_node_rwsem)) {
             // trylock is used to avoid deadlock, see documentation for detailed description.
             if ((command ^ IPC_RMID) == IPC_NOWAIT) {
-                /* case of REMOVE | IPC_NOWAIT
+                /* case of IPC_RMID | IPC_NOWAIT
                  * let's remove the tag */
                 ret_key = remove_tag(tag, 1);
             } else {
@@ -524,7 +520,7 @@ int remove_tag(int tag, int nowait) {
         ret_key = my_tag->key;
 
         if (GOT_PERMISSION(my_tag->uid.val, my_tag->perm)) {
-            /*first of all remove the key; this way the tag cannot be invoked anymore */
+            /*first of all remove the key; this way the tag cannot be used anymore */
             if (ret_key != IPC_PRIVATE) {
                 /*use nowait is IPC_NOWAIT is specified*/
                 if (nowait) {
